@@ -1,5 +1,5 @@
 ---
-description: Scores match eslint-plugin-sonarjs rule S3776 function for function, except one nesting shape where the rule reports the whitepaper-correct total.
+description: Scores match eslint-plugin-sonarjs rule S3776 function for function, except for a function in a branch position, where the rule reports the whitepaper-correct total.
 status: accepted
 ---
 
@@ -21,18 +21,18 @@ Differential tests run both implementations over the same sources and fail on an
 
 Checked against `eslint-plugin-sonarjs` 4.2.0:
 
-| Whitepaper                                                                                                            | SonarJS (and this rule)                                                                                                                                                                          |
-| --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Recursion adds +1.                                                                                                    | Recursion is not counted.                                                                                                                                                                        |
-| Each sequence of like binary logical operators adds +1.                                                               | Only `&&` sequences count. `\|\|` and `??` never add anything, so `if (a \|\| b)` scores 1 and `a && b \|\| c && d` scores 2.                                                                    |
-| A nested function or lambda raises the nesting level, and its increments count toward the enclosing function's total. | Every function is scored on its own, starting from nesting zero, and reported separately. Its score is not added to the enclosing function's.                                                    |
-| No special case for markup.                                                                                           | Logical operators inside a JSX expression container (`{a && <Item />}`, `<div hidden={a && b} />`) are not counted. The same operator outside JSX, such as `return a && <Item />`, still counts. |
+| Whitepaper                                                                                                                                                                                                       | SonarJS (and this rule)                                                                                                                                                                          |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Recursion adds +1.                                                                                                                                                                                               | Recursion is not counted.                                                                                                                                                                        |
+| Each sequence of like binary logical operators adds +1.                                                                                                                                                          | Only `&&` sequences count. `\|\|` and `??` never add anything, so `if (a \|\| b)` scores 1 and `a && b \|\| c && d` scores 2.                                                                    |
+| A nested function or lambda raises the nesting level, and its increments count toward the enclosing function's total, unless the outer function is purely declarative (has no structural increments of its own). | Every function is scored on its own, starting from nesting zero, and reported separately. Its score is not added to the enclosing function's.                                                    |
+| No special case for markup.                                                                                                                                                                                      | Logical operators inside a JSX expression container (`{a && <Item />}`, `<div hidden={a && b} />`) are not counted. The same operator outside JSX, such as `return a && <Item />`, still counts. |
 
 ### Where this rule reports the whitepaper total instead
 
-SonarJS does not restore its nesting level after leaving a function that sits directly in a branch position: a function expression used as a ternary branch (`a ? () => a : b`), or, in sloppy-mode scripts, a function declaration used as the body of an `if`. Every increment that follows in the enclosing function is then one higher than it should be. For example, `function f(a) { const x = a ? () => a : a; for (;;) {} }` scores 3 in SonarJS. The whitepaper gives 2: +1 for the ternary and +1 for the `for` at nesting zero.
+The one exception is a function that sits directly in a branch position. It takes two forms: a function expression used as a ternary branch (`a ? () => a : b`), and, in sloppy-mode scripts, a function declaration used as the body of an `if`. SonarJS does not restore its nesting level after leaving such a function, so every nesting-sensitive structure that follows in the enclosing function (`if`, ternary, `switch`, loops, `catch`) is scored one level too deep. The error accumulates: each further function in a branch position adds another level. For example, `function f(a) { const x = a ? () => a : a; for (;;) {} }` scores 3 in SonarJS. The whitepaper gives 2: +1 for the ternary and +1 for the `for` at nesting zero.
 
-This rule reports 2. Its differential tests pin the whitepaper totals for these shapes and assert that SonarJS still disagrees, so a SonarJS fix shows up as a failing test and the exception can be removed.
+This rule reports 2. Its differential tests pin the whitepaper totals for both forms and assert that SonarJS still disagrees, so a SonarJS fix shows up as a failing test and the exception can be removed.
 
 ## Rationale
 
