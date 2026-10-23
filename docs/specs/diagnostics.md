@@ -57,12 +57,13 @@ Exactly one suggested change. It moves one region of the function into a new fun
 
 The candidate regions are:
 
-- the body of any `if`, `else if`, `else`, loop, `try`, `catch` or `finally`, at any depth, with or without braces
-- the statements of any `case` or `default`
+- the body of any `if`, `else if`, `else` or loop, at any depth, with or without braces
+- the `try`, `catch` and `finally` blocks of a `try` that has a `catch`
+- the statements of any `case` or `default`, without the unlabeled `break` that ends it
 - any run of consecutive statements in the function body, short of the whole body
 - any `?:` with a nesting bonus
 
-For each candidate, the rule works out what this function would score without the region, and what the region would score as a function of its own. The region's own nesting goes away: everything in the body of a top-level loop scores one point less once it moves. The rule picks the candidate where the higher of the two scores is lowest, then the earliest, then the shortest. A candidate qualifies only if that score is lower than the current total, so repeating the fix always makes progress.
+For each candidate, the rule works out what this function would score without the region, and what the region would score as a function of its own. The region's own nesting goes away: everything in the body of a top-level loop scores one point less once it moves. The rule picks the candidate where the higher of the two scores is lowest, then the one that starts first in the source, then the shortest. A candidate qualifies only if that score is lower than the current total, so repeating the fix always makes progress.
 
 Wording:
 
@@ -71,11 +72,13 @@ Wording:
 | a body or case | `move lines 19-22 (the body of the 'for...of' at line 18) into a new function; this one drops to 3 and the new one scores 3`                                                                            |
 |                | other descriptions: `the 'else' branch at line 18`, `the 'case' at line 33`, `the 'default' at line 41`, `the 'try' block at line 49`, `the 'catch' block at line 51`, `the 'finally' block at line 58` |
 | statement run  | `move lines 5-8 into a new function; this one drops to 2 and the new one scores 2`                                                                                                                      |
-| ternary        | `move the '?:' at line 80, column 48, into a helper function; this one drops to 3 and the helper scores 1`                                                                                              |
+| ternary        | `move the '?:' at line 80, column 43, into a helper function; this one drops to 1 and the helper scores 3`                                                                                              |
 
 Line ranges cover the region's statements, not its braces, and read `line 43` when the region is on one line.
 
-The numbers assume the region moves unchanged. A region that contains a `return`, `break`, `continue`, `yield` or labeled jump needs extra handling at the call site, which the hint doesn't account for yet.
+When another construct of the same kind shares its line, a construct is also given its column: `the body of the 'for' at line 105, column 11`.
+
+The numbers assume the region moves unchanged. The hint doesn't yet account for what stands in the way of that: a `return`, `break`, `continue`, `yield` or labeled jump in the region, or a variable declared in the region and used after it, needs extra handling at the call site.
 
 When no candidate qualifies, the fix is worded by the heaviest contributor, at its first line:
 

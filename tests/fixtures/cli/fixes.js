@@ -99,3 +99,8 @@ export function single(a) {
 		a();
 	}
 }
+
+// Two constructs of one kind on a line are told apart by column.
+export function sameLine(a) {
+	for (;;) for (;;) if (a) if (a) a();
+}

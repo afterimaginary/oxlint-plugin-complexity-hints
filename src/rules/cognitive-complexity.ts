@@ -11,6 +11,7 @@ import {
 	isJsxShortCircuit,
 	type FunctionUnit,
 	type Increment,
+	type Kind,
 } from "../scoring.ts";
 
 const DEFAULT_MAX = 15;
@@ -61,7 +62,7 @@ const rule: Rule = {
 		/** Records an increment for the unit `node` belongs to, plus the nesting level when `nested`. */
 		function record(
 			node: ESTree.Node,
-			kind: string,
+			kind: Kind,
 			{ points = 1, nested = false, line = node.loc.start.line } = {},
 		): void {
 			const found = enclosingUnit(node);
@@ -82,7 +83,7 @@ const rule: Rule = {
 		}
 
 		/** +1 plus the nesting level: `if`, ternaries, `switch`, loops, `catch`. */
-		function addNested(kind: string) {
+		function addNested(kind: Kind) {
 			return (node: ESTree.Node) => record(node, kind, { nested: true });
 		}
 
@@ -104,7 +105,7 @@ const rule: Rule = {
 						total,
 						max,
 						contributors: describeContributors(ranked),
-						fix: suggestFix(unit, scored, ranked[0]!),
+						fix: suggestFix(unit, scored, total, ranked[0]!),
 					},
 					loc: reportLocation(unit, context.sourceCode),
 				});
@@ -125,45 +126,45 @@ const rule: Rule = {
 			"ArrowFunctionExpression:exit": exitUnit,
 			IfStatement(node) {
 				if (isElseIf(node)) {
-					record(node, "'else if'");
+					record(node, "else if");
 				} else {
-					record(node, "'if'", { nested: true });
+					record(node, "if", { nested: true });
 				}
 
 				if (node.alternate && !isElseIf(node.alternate)) {
 					// Kept on the `if`, so moving the `else` body leaves this increment behind.
 					const keyword = context.sourceCode.getTokenBefore(node.alternate);
 
-					record(node, "'else'", { line: keyword?.loc.start.line });
+					record(node, "else", { line: keyword?.loc.start.line });
 				}
 			},
-			ConditionalExpression: addNested("'?:'"),
-			SwitchStatement: addNested("'switch'"),
-			ForStatement: addNested("'for'"),
-			ForInStatement: addNested("'for...in'"),
+			ConditionalExpression: addNested("?:"),
+			SwitchStatement: addNested("switch"),
+			ForStatement: addNested("for"),
+			ForInStatement: addNested("for...in"),
 			ForOfStatement(node) {
-				record(node, node.await ? "'for await...of'" : "'for...of'", { nested: true });
+				record(node, node.await ? "for await...of" : "for...of", { nested: true });
 			},
-			WhileStatement: addNested("'while'"),
-			DoWhileStatement: addNested("'do...while'"),
-			CatchClause: addNested("'catch'"),
+			WhileStatement: addNested("while"),
+			DoWhileStatement: addNested("do...while"),
+			CatchClause: addNested("catch"),
 			LogicalExpression(node) {
 				if (isChainRoot(node) && !isJsxShortCircuit(node)) {
 					const runs = andRuns(node);
 
 					if (runs > 0) {
-						record(node, "'&&'", { points: runs });
+						record(node, "&&", { points: runs });
 					}
 				}
 			},
 			BreakStatement(node) {
 				if (node.label) {
-					record(node, "labeled 'break'");
+					record(node, "labeled break");
 				}
 			},
 			ContinueStatement(node) {
 				if (node.label) {
-					record(node, "labeled 'continue'");
+					record(node, "labeled continue");
 				}
 			},
 		};

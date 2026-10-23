@@ -12,7 +12,7 @@ export { rule };
 
 /**
  * Matches the score part of the rule's message for a unit scoring `total` against `max`.
- * The rest of the message has its own tests in message.test.ts.
+ * The rest of the message is pinned by the snapshots in cli.test.ts.
  */
 export function message(total: number, max = 0): RegExp {
 	return new RegExp(` has cognitive complexity ${total}, over the max of ${max}; `);

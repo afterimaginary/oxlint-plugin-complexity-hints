@@ -27,7 +27,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 ## Up Next
 
 1. Fix hint: guard clause for the deepest `if` (#8)
-2. Fix hint: extract a block into a function (#9)
+2. Fix hint: what stands in the way of extracting a block (#9)
 3. Correct line numbers in `.vue`, `.svelte` and `.astro` script blocks (#10)
 
 ## Needs Your Decision

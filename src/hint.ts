@@ -1,5 +1,5 @@
 import type { ESTree } from "@oxlint/plugins";
-import type { Contributor } from "./contributors.ts";
+import { kindText, type Contributor } from "./contributors.ts";
 import { enclosingUnit, isElseIf, type FunctionUnit, type Increment } from "./scoring.ts";
 
 /** A stretch of a unit that could move into a new function. */
@@ -10,10 +10,8 @@ interface Region {
 	lastLine: number;
 	/** The nesting level the region's contents sit at, which a move takes away. */
 	depth: number;
-	/** What the region is, such as "the body of the 'for' at line 3"; absent for a run of statements. */
-	what?: string;
-	/** For a ternary, its 1-based column, since a line can hold several. */
-	ternaryColumn?: number;
+	/** The fix's wording, given what each function would then score. */
+	text: (remaining: number, moved: number) => string;
 }
 
 function span(first: ESTree.Node, last: ESTree.Node) {
@@ -25,69 +23,119 @@ function span(first: ESTree.Node, last: ESTree.Node) {
 	};
 }
 
-/** The statements of a body, or nothing when it is empty. */
-function bodyRegion(body: ESTree.Node | null, what: string): Region | undefined {
+function lines(firstLine: number, lastLine: number): string {
+	return firstLine === lastLine ? `line ${firstLine}` : `lines ${firstLine}-${lastLine}`;
+}
+
+/** `move lines 5-8 (what) into a new function; …` for a region of whole statements. */
+function statementsRegion(
+	statements: readonly ESTree.Node[],
+	depth: number,
+	what?: string,
+): Region[] {
+	if (statements.length === 0) {
+		return [];
+	}
+
+	const where = span(statements[0]!, statements.at(-1)!);
+	const described = what ? ` (${what})` : "";
+
+	return [
+		{
+			...where,
+			depth,
+			text: (remaining, moved) =>
+				`move ${lines(where.firstLine, where.lastLine)}${described} into a new function; this one drops to ${remaining} and the new one scores ${moved}`,
+		},
+	];
+}
+
+function bodyRegion(body: ESTree.Node | null, what: string): Region[] {
 	if (!body) {
-		return undefined;
+		return [];
 	}
 
 	const statements = body.type === "BlockStatement" ? body.body : [body];
 
-	if (statements.length === 0) {
-		return undefined;
-	}
-
-	return {
-		...span(statements[0]!, statements.at(-1)!),
-		depth: enclosingUnit(body)?.nesting ?? 0,
-		what,
-	};
+	return statementsRegion(statements, enclosingUnit(body)?.nesting ?? 0, what);
 }
 
 function caseRegions(node: ESTree.SwitchStatement): Region[] {
 	return node.cases.flatMap((switchCase) => {
-		if (switchCase.consequent.length === 0) {
-			return [];
+		const statements = [...switchCase.consequent];
+		const last = statements.at(-1);
+
+		// The `break` that ends a case stays behind.
+		if (last?.type === "BreakStatement" && !last.label) {
+			statements.pop();
 		}
 
 		const label = switchCase.test ? "'case'" : "'default'";
 
-		return {
-			...span(switchCase.consequent[0]!, switchCase.consequent.at(-1)!),
-			depth: enclosingUnit(switchCase)?.nesting ?? 0,
-			what: `the ${label} at line ${switchCase.loc.start.line}`,
-		};
+		return statementsRegion(
+			statements,
+			enclosingUnit(switchCase)?.nesting ?? 0,
+			`the ${label} at line ${switchCase.loc.start.line}`,
+		);
 	});
 }
 
-function tryRegions(node: ESTree.CatchClause): (Region | undefined)[] {
+function tryRegions(node: ESTree.CatchClause): Region[] {
 	// A `catch` always belongs to a `try`.
 	const statement = node.parent as ESTree.TryStatement;
 	const line = (block: ESTree.Node) => block.loc.start.line;
 
 	return [
-		bodyRegion(statement.block, `the 'try' block at line ${line(statement.block)}`),
-		bodyRegion(node.body, `the 'catch' block at line ${line(node)}`),
-		bodyRegion(
+		...bodyRegion(statement.block, `the 'try' block at line ${line(statement.block)}`),
+		...bodyRegion(node.body, `the 'catch' block at line ${line(node)}`),
+		...bodyRegion(
 			statement.finalizer,
 			`the 'finally' block at line ${line(statement.finalizer ?? node)}`,
 		),
 	];
 }
 
+function ternaryRegion(node: ESTree.Node, depth: number): Region[] {
+	const where = `line ${node.loc.start.line}, column ${node.loc.start.column + 1}`;
+
+	return [
+		{
+			...span(node, node),
+			depth,
+			text: (remaining, moved) =>
+				`move the '?:' at ${where}, into a helper function; this one drops to ${remaining} and the helper scores ${moved}`,
+		},
+	];
+}
+
+/** Where a construct is: its line, plus its column when another of its kind shares the line. */
+function position(increment: Increment, increments: readonly Increment[]): string {
+	const { kind, line, node } = increment;
+
+	const shared = increments.some(
+		(other) => other !== increment && other.kind === kind && other.line === line,
+	);
+
+	return shared ? `line ${line}, column ${node.loc.start.column + 1}` : `line ${line}`;
+}
+
 /** The regions an increment's construct offers: its bodies, cases or, for a nested ternary, itself. */
-function regionsOf({ kind, node, line, nesting }: Increment): (Region | undefined)[] {
+function regionsOf(increment: Increment, increments: readonly Increment[]): Region[] {
+	const { kind, node, nesting } = increment;
+	const at = position(increment, increments);
+
 	switch (node.type) {
 		case "IfStatement":
-			if (kind === "'else'") {
+			// An `else` increment sits on its `if`, which offers its regions once.
+			if (kind === "else") {
 				return [];
 			}
 
 			return [
-				bodyRegion(node.consequent, `the body of the ${kind} at line ${line}`),
-				node.alternate && !isElseIf(node.alternate)
+				...bodyRegion(node.consequent, `the body of the ${kindText(kind)} at ${at}`),
+				...(node.alternate && !isElseIf(node.alternate)
 					? bodyRegion(node.alternate, `the 'else' branch at line ${node.alternate.loc.start.line}`)
-					: undefined,
+					: []),
 			];
 
 		case "ForStatement":
@@ -95,7 +143,7 @@ function regionsOf({ kind, node, line, nesting }: Increment): (Region | undefine
 		case "ForOfStatement":
 		case "WhileStatement":
 		case "DoWhileStatement":
-			return [bodyRegion(node.body, `the body of the ${kind} at line ${line}`)];
+			return bodyRegion(node.body, `the body of the ${kindText(kind)} at ${at}`);
 
 		case "CatchClause":
 			return tryRegions(node);
@@ -104,33 +152,32 @@ function regionsOf({ kind, node, line, nesting }: Increment): (Region | undefine
 			return caseRegions(node);
 
 		case "ConditionalExpression":
-			return nesting > 0
-				? [{ ...span(node, node), depth: nesting, ternaryColumn: node.loc.start.column + 1 }]
-				: [];
+			return nesting > 0 ? ternaryRegion(node, nesting) : [];
 
 		default:
 			return [];
 	}
 }
 
-/** Every run of consecutive statements in the unit's body, short of the whole body. */
-function statementRuns(unit: FunctionUnit): Region[] {
-	const statements = unit.body?.type === "BlockStatement" ? unit.body.body : [];
-	const runs: Region[] = [];
+interface Option {
+	region: Region;
+	remaining: number;
+	moved: number;
+	/** The higher of the two scores after the move; lower is better. */
+	score: number;
+}
 
-	for (let from = 0; from < statements.length; from++) {
-		for (let to = from; to < statements.length; to++) {
-			if (to - from + 1 < statements.length) {
-				runs.push({ ...span(statements[from]!, statements[to]!), depth: 0 });
-			}
-		}
-	}
-
-	return runs;
+function option(region: Region, remaining: number, moved: number): Option {
+	return {
+		region,
+		remaining,
+		moved,
+		score: Math.max(remaining, moved),
+	};
 }
 
 /** What each function would score if `region` moved out unchanged. */
-function split(region: Region, increments: readonly Increment[], total: number) {
+function evaluate(region: Region, increments: readonly Increment[], total: number): Option {
 	let removed = 0;
 	let moved = 0;
 
@@ -142,49 +189,62 @@ function split(region: Region, increments: readonly Increment[], total: number) 
 		}
 	}
 
-	return { remaining: total - removed, moved };
-}
-
-function lines({ firstLine, lastLine }: Region): string {
-	return firstLine === lastLine ? `line ${firstLine}` : `lines ${firstLine}-${lastLine}`;
-}
-
-function moveText(region: Region, remaining: number, moved: number): string {
-	if (region.ternaryColumn) {
-		return `move the '?:' at line ${region.firstLine}, column ${region.ternaryColumn}, into a helper function; this one drops to ${remaining} and the helper scores ${moved}`;
-	}
-
-	const what = region.what ? ` (${region.what})` : "";
-
-	return `move ${lines(region)}${what} into a new function; this one drops to ${remaining} and the new one scores ${moved}`;
-}
-
-/** The hint when no region helps, worded by the heaviest contributor. */
-function fallbackText({ kind, line }: Contributor): string {
-	if (kind === "'&&'") {
-		return `split the condition at line ${line} into named helper functions`;
-	}
-
-	if (kind === "'else if'") {
-		return `replace the else-if chain at line ${line} with a switch or a lookup table`;
-	}
-
-	return `split the code around line ${line} into smaller functions`;
-}
-
-interface Option {
-	region: Region;
-	remaining: number;
-	moved: number;
-	/** The higher of the two scores after the move; lower is better. */
-	score: number;
+	return option(region, total - removed, moved);
 }
 
 /** Orders options best first: the lowest score, then the earliest, then the shortest region. */
 function compare(a: Option, b: Option): number {
 	const length = (option: Option) => option.region.end - option.region.start;
 
-	return a.score - b.score || a.region.firstLine - b.region.firstLine || length(a) - length(b);
+	return a.score - b.score || a.region.start - b.region.start || length(a) - length(b);
+}
+
+/**
+ * The best run of consecutive statements in the unit's body, short of the whole body.
+ * Runs sit at depth 0, so a run's score is just the points of its statements, summed
+ * from a running total rather than by rescanning the increments for every run.
+ */
+function bestRun(unit: FunctionUnit, increments: readonly Increment[], total: number): Option[] {
+	const statements = unit.body?.type === "BlockStatement" ? unit.body.body : [];
+	const before = [0];
+
+	for (const statement of statements) {
+		const inside = increments.filter(
+			({ node }) => node.start >= statement.start && node.end <= statement.end,
+		);
+
+		before.push(before.at(-1)! + inside.reduce((sum, { points }) => sum + points, 0));
+	}
+
+	let best: Option | undefined;
+
+	for (let from = 0; from < statements.length; from++) {
+		for (let to = from; to < statements.length && to - from + 1 < statements.length; to++) {
+			const removed = before[to + 1]! - before[from]!;
+			const score = Math.max(total - removed, removed);
+
+			if (!best || score < best.score) {
+				const [region] = statementsRegion(statements.slice(from, to + 1), 0);
+
+				best = option(region!, total - removed, removed);
+			}
+		}
+	}
+
+	return best ? [best] : [];
+}
+
+/** The hint when no region helps, worded by the heaviest contributor. */
+function fallbackText({ kind, line }: Contributor): string {
+	if (kind === "&&") {
+		return `split the condition at line ${line} into named helper functions`;
+	}
+
+	if (kind === "else if") {
+		return `replace the else-if chain at line ${line} with a switch or a lookup table`;
+	}
+
+	return `split the code around line ${line} into smaller functions`;
 }
 
 /**
@@ -194,25 +254,17 @@ function compare(a: Option, b: Option): number {
 export function suggestFix(
 	unit: FunctionUnit,
 	increments: readonly Increment[],
+	total: number,
 	heaviest: Contributor,
 ): string {
-	const total = increments.reduce((sum, increment) => sum + increment.points, 0);
-	const regions = [...increments.flatMap(regionsOf), ...statementRuns(unit)];
+	const options = [
+		...increments
+			.flatMap((increment) => regionsOf(increment, increments))
+			.map((region) => evaluate(region, increments, total)),
+		...bestRun(unit, increments, total),
+	];
 
-	const [best] = regions
-		.filter((region) => region !== undefined)
-		.map((region): Option => {
-			const { remaining, moved } = split(region, increments, total);
+	const [best] = options.filter((candidate) => candidate.score < total).sort(compare);
 
-			return {
-				region,
-				remaining,
-				moved,
-				score: Math.max(remaining, moved),
-			};
-		})
-		.filter((option) => option.score < total)
-		.sort(compare);
-
-	return best ? moveText(best.region, best.remaining, best.moved) : fallbackText(heaviest);
+	return best ? best.region.text(best.remaining, best.moved) : fallbackText(heaviest);
 }

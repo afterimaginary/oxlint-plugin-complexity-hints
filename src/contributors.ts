@@ -1,8 +1,8 @@
-import type { Increment } from "./scoring.ts";
+import type { Increment, Kind } from "./scoring.ts";
 
 /** One contributor in a message: a single increment, or several grouped together. */
 export interface Contributor {
-	kind: string;
+	kind: Kind;
 	text: string;
 	points: number;
 	line: number;
@@ -26,8 +26,13 @@ function groupBy(increments: readonly Increment[], key: (increment: Increment) =
 	return [...groups.values()];
 }
 
-function counted(count: number, kind: string): string {
-	return count === 1 ? kind : `${count} ${kind}`;
+/** How a message names a kind: `'if'`, or `labeled 'break'`. */
+export function kindText(kind: Kind): string {
+	return kind.startsWith("labeled ") ? `labeled '${kind.slice("labeled ".length)}'` : `'${kind}'`;
+}
+
+function counted(count: number, kind: Kind): string {
+	return count === 1 ? kindText(kind) : `${count} ${kindText(kind)}`;
 }
 
 function sum(increments: readonly Increment[]): number {
