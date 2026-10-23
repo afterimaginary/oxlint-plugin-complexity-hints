@@ -85,7 +85,7 @@ The candidate regions are:
 - any run of consecutive statements in the function body, short of the whole body
 - any `?:` with a nesting bonus
 
-For each candidate, the rule works out what this function would score without the region, and what the region would score as a function of its own. The region's own nesting goes away: everything in the body of a top-level loop scores one point less once it moves. The rule picks the candidate where the higher of the two scores is lowest, then the one that starts first in the source, then the shortest. A candidate qualifies only if that score is lower than the current total, so repeating the fix always makes progress.
+For each candidate, the rule works out what this function would score without the region, plus whatever the workaround for its [obstacles](#obstacles) adds back, and what the region would score as a function of its own. The region's own nesting goes away: everything in the body of a top-level loop scores one point less once it moves. The rule picks the candidate where the higher of the two scores is lowest, then the one with fewer obstacles, then the one that starts first in the source, then the shortest. A candidate qualifies only if that score is lower than the current total, so repeating the fix always makes progress.
 
 Wording:
 
@@ -98,7 +98,63 @@ Wording:
 
 Line ranges cover the region's statements, not its braces, and read `line 43` when the region is on one line.
 
-The numbers assume the region moves unchanged. The hint doesn't yet account for what stands in the way of that: a `return`, `break`, `continue`, `yield` or labeled jump in the region, or a variable declared in the region and used after it, needs extra handling at the call site.
+#### Obstacles
+
+Some code can't move into a new function unchanged. The hint names each such obstacle and its standard workaround, as a clause between the region and the scores:
+
+```
+move lines 28-30 (the body of the 'if' at line 27) into a new function; it returns from this function on some paths, so have it return the result or undefined, and return that from the caller when it is defined; this one drops to 6 and the new one scores 7
+```
+
+Control flow (code inside nested functions doesn't count):
+
+| Obstacle                                      | Clause                                                                                                                                       | Adds to this function        |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| a `return` on every path, with a value        | `it returns from this function, so return its result from the caller`                                                                        | 0                            |
+| a `return` on every path, without one         | `it returns from this function, so call it and then return`                                                                                  | 0                            |
+| a `return` on some paths, with a value        | `it returns from this function on some paths, so have it return the result or undefined, and return that from the caller when it is defined` | an `if`                      |
+| a `return` on some paths, without one         | `it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does`                    | an `if`                      |
+| a `break` out of a loop or `switch` around it | `it breaks out of the 'for' at line 66, so have it return whether to break, and break from the caller when it does`                          | an `if`                      |
+| a `continue` of a loop around it              | `it continues the 'for...of' at line 79, so have it return whether to continue, and continue from the caller when it does`                   | an `if`                      |
+| a labeled `break` or `continue`               | `it breaks to 'outer', so have it return whether to break, and break outer from the caller when it does`                                     | an `if` and the labeled jump |
+| `await`                                       | `it awaits, so make it async and await it`                                                                                                   | 0                            |
+| `yield`                                       | `it yields, so make it a generator and yield* its result`                                                                                    | 0                            |
+
+- A `return` counts as on every path only when the region can't fall off its end and has no `break` or `continue` that leaves it. Loops, labels and `try` aren't followed, so a `return` inside them counts as on some paths.
+- A `return` without a value includes `return undefined` and `return void …`. A `return` whose value can be `undefined` at run time still gets the "or undefined" workaround, so the caller can't tell it from no return; check such a case by hand.
+- A jump to a loop, `switch` or label inside the region stays inside. Continuing the loop whose body the region is, or breaking out of the `switch` whose case it is, just ends the region, so it becomes a plain `return`: no obstacle. Breaking out of the region's own loop is an obstacle, since the caller still has to stop the loop.
+- The added `if` sits at the call site, where the region was, so it scores 1 plus the region's nesting level. A labeled jump at the call site adds 1 more, and each labeled jump that leaves the region scores 1 less in the new function, where it becomes a `return`.
+
+Variables, other than module-level and global ones:
+
+| Obstacle                                                  | Clause                                                                                                                                                               |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| reassigned in the region, and the new value is read later | `it reassigns 'count', which the code around it reads, so have it return the new 'count' and assign it from the call`                                                |
+| declared in the region, and used after it                 | `it declares 'found', which the code after it uses, so declare 'found' before line 255, have it return 'found', and assign it from the call`                         |
+| both                                                      | `it reassigns 'a' and declares 'x', which the code around it reads, so declare 'x' before line N, have it return the new 'a' and 'x', and assign them from the call` |
+
+- A new value is read later when it is read after the region, by a closure anywhere, or anywhere inside a loop that encloses the region within the variable's scope (on the next pass). A variable of an enclosing function is always taken as read, since this function can run again.
+- A declared name goes before the statement that holds the region, in the innermost statement list that also holds every use of the name.
+- When the region returns on every path, the code after it never runs, so variables are no obstacle.
+- Names are listed in source order, at most three, then `and N more`.
+
+Clauses for several obstacles are joined with `, and `. The obstacle count used to break ties is the number of clauses.
+
+A region is not suggested when there is no standard way around what's in it:
+
+- the new function would have to hand back two things: a `return` (on some paths, or on every path with a value), a `break` or `continue`, and changed variables each need its return value;
+- its `break`s and `continue`s don't all have the same kind and target;
+- its returns on some paths mix values with no values;
+- a closure created in it writes a variable from outside it;
+- a variable it declares is used before it (hoisting);
+- a `using` declaration in it would be disposed earlier once moved (in a case, or a statement run short of the end of the body);
+- it is a `?:` whose variables would need handing back, since its helper already returns its value.
+
+Not handled: `this`, `super`, `arguments` and `new.target` in the region.
+
+#### Statement runs
+
+A function with many top-level statements has many runs. A run's score before obstacles is just its points, and obstacles can only add one point to it, so only runs at the lowest score or one above it can be chosen. Of each, the first 64 are analysed for obstacles, shortest first; a very long function may get a good rather than the best run.
 
 When no guard or region qualifies, the fix is worded by the heaviest contributor, at its first line:
 
@@ -110,4 +166,4 @@ When no guard or region qualifies, the fix is worded by the heaviest contributor
 
 ## Examples
 
-More examples, covering every label, grouping rule and kind of fix, and each case that allows or rules out a guard clause, are pinned by the snapshots in `tests/cli.test.ts`, from the fixtures in `tests/fixtures/cli/`.
+More examples, covering every label, grouping rule and kind of fix, each case that allows or rules out a guard clause, and each obstacle to a move, are pinned by the snapshots in `tests/cli.test.ts`, from the fixtures in `tests/fixtures/cli/`.

@@ -1,5 +1,5 @@
 import type { ESTree } from "@oxlint/plugins";
-import { isFunctionUnit, type Increment } from "./scoring.ts";
+import { isFunctionUnit, isLoop, type Increment } from "./scoring.ts";
 
 /** An `if` that can be inverted into `if (!test) return;` or `if (!test) continue;`. */
 export interface GuardClause {
@@ -8,23 +8,6 @@ export interface GuardClause {
 	exit: "return" | "continue";
 	/** One point per nesting-scored increment in the `if`'s body, which all move up a level. */
 	saving: number;
-}
-
-function isLoop(
-	node: ESTree.Node,
-): node is
-	| ESTree.ForStatement
-	| ESTree.ForInStatement
-	| ESTree.ForOfStatement
-	| ESTree.WhileStatement
-	| ESTree.DoWhileStatement {
-	return (
-		node.type === "ForStatement" ||
-		node.type === "ForInStatement" ||
-		node.type === "ForOfStatement" ||
-		node.type === "WhileStatement" ||
-		node.type === "DoWhileStatement"
-	);
 }
 
 /**

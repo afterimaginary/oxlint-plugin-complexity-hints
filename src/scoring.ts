@@ -42,6 +42,23 @@ export function isFunctionUnit(node: ESTree.Node): node is FunctionUnit {
 	);
 }
 
+export type Loop =
+	| ESTree.ForStatement
+	| ESTree.ForInStatement
+	| ESTree.ForOfStatement
+	| ESTree.WhileStatement
+	| ESTree.DoWhileStatement;
+
+export function isLoop(node: ESTree.Node): node is Loop {
+	return (
+		node.type === "ForStatement" ||
+		node.type === "ForInStatement" ||
+		node.type === "ForOfStatement" ||
+		node.type === "WhileStatement" ||
+		node.type === "DoWhileStatement"
+	);
+}
+
 /** Is `node` the `if` of an `else if`? */
 export function isElseIf(node: ESTree.Node): boolean {
 	return (

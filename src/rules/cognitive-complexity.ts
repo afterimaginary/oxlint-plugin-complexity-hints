@@ -105,7 +105,7 @@ const rule: Rule = {
 						total,
 						max,
 						contributors: describeContributors(ranked),
-						fix: suggestFix(unit, scored, total, ranked[0]!),
+						fix: suggestFix(unit, scored, total, ranked[0]!, context.sourceCode.scopeManager),
 					},
 					loc: reportLocation(unit, context.sourceCode),
 				});
