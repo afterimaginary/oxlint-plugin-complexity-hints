@@ -9,7 +9,7 @@ A cognitive complexity rule for [Oxlint](https://oxc.rs/docs/guide/usage/linter)
 Oxlint's JS plugin API gives a rule one line of output: no `help` text, no docs URL. A bare "complexity 22 > 15" leaves an agent guessing. This plugin's diagnostics say which function is too complex, where the complexity comes from, and one concrete change that lowers it:
 
 ```
-src/orders.ts:3:17: error complexity(cognitive-complexity): Function 'processOrder' has cognitive complexity 23, over the max of 15; main contributors: 'if' at line 16 (+4, nested 3 deep), 'if' at line 26 (+4, nested 3 deep), 3 '&&' at lines 8-26 (+3); fix: move lines 13-29 (the body of the 'if' at line 12) into a new function; this one drops to 6 and the new one scores 9.
+src/orders.ts:3:17: error complexity(cognitive-complexity): Function 'processOrder' has cognitive complexity 23, over the max of 15; main contributors: 'if' at line 16 (+4, nested 3 deep), 'if' at line 26 (+4, nested 3 deep), 3 '&&' at lines 8-26 (+3); fix: invert the 'if' at line 12 into a guard clause that continues to the next iteration early, so its body moves up a level; this one drops to 19.
 ```
 
 The format is specified in [`docs/specs/diagnostics.md`](docs/specs/diagnostics.md).

@@ -4,7 +4,7 @@
 
 ## Where We Are
 
-The repository is scaffolded as a Vite+ library with linting, formatting, git hooks and the `verify` CI workflow. The roadmap is planned as issues across five milestones, and the scope decisions are recorded as ADR-0001 to ADR-0003. `complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md` and reports those over `max` with a single-line message, specified in `docs/specs/diagnostics.md`, that names the main contributors and one fix. A differential test checks every fixture against `eslint-plugin-sonarjs`, with the whitepaper deviations pinned. JSX conditional rendering scores nothing, and TypeScript-only syntax adds nothing. The repository lints itself with the rule.
+The repository is scaffolded as a Vite+ library with linting, formatting, git hooks and the `verify` CI workflow. The roadmap is planned as issues across five milestones, and the scope decisions are recorded as ADR-0001 to ADR-0003. `complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md` and reports those over `max` with a single-line message, specified in `docs/specs/diagnostics.md`, that names the main contributors and one fix: a guard clause when one saves points, or else a region to move into a new function. A differential test checks every fixture against `eslint-plugin-sonarjs`, with the whitepaper deviations pinned. JSX conditional rendering scores nothing, and TypeScript-only syntax adds nothing. The repository lints itself with the rule.
 
 ## Features
 
@@ -15,6 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
+- Guard-clause fix hint (#8)
 - Single-line diagnostics with contributors and a fix (#28)
 - Repository lints itself with its own rule (#27)
 - TypeScript and JSX syntax handled (#26)
@@ -26,9 +27,9 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Up Next
 
-1. Fix hint: guard clause for the deepest `if` (#8)
-2. Fix hint: what stands in the way of extracting a block (#9)
-3. Correct line numbers in `.vue`, `.svelte` and `.astro` script blocks (#10)
+1. Fix hint: what stands in the way of extracting a block (#9)
+2. Correct line numbers in `.vue`, `.svelte` and `.astro` script blocks (#10)
+3. Pin `--format agent` output with CLI tests (#11)
 
 ## Needs Your Decision
 

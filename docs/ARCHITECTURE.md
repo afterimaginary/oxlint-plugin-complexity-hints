@@ -24,7 +24,8 @@ The scoring rules are specified in [`docs/specs/scoring.md`](specs/scoring.md), 
 | `src/report-location.ts`            | Which token a unit's diagnostic points at.                                                                                                                                    |
 | `src/describe-function.ts`          | How the message names a unit.                                                                                                                                                 |
 | `src/contributors.ts`               | Grouping and ranking a unit's increments for the message.                                                                                                                     |
-| `src/hint.ts`                       | The one suggested fix: which region to move into a new function.                                                                                                              |
+| `src/guard-clause.ts`               | Which `if` can become a guard clause without skipping anything, and how many points that saves.                                                                               |
+| `src/hint.ts`                       | The one suggested fix: a guard clause, or else which region to move into a new function.                                                                                      |
 | `src/rules/cognitive-complexity.ts` | The Oxlint wiring: options, one visitor per counted construct, and the report when a unit's `:exit` visitor runs.                                                             |
 
 Attribution and nesting are computed from each increment's `parent` chain up to its nearest function unit, so no state carries from one unit to another. Scores for a file live in a map that is reset in the `before` hook.

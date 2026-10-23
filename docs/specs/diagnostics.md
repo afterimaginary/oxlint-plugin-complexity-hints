@@ -13,7 +13,7 @@ Oxlint's JS plugin diagnostics have no `help` text and no docs URL, and `--forma
 For example:
 
 ```
-Function 'deep' has cognitive complexity 10, over the max of 0; main contributors: 'if' at line 20 (+4, nested 3 deep), 'while' at line 19 (+3, nested 2 deep), 'for...of' at line 18 (+2, nested 1 deep); fix: move lines 19-22 (the body of the 'for...of' at line 18) into a new function; this one drops to 3 and the new one scores 3.
+Function 'deep' has cognitive complexity 10, over the max of 0; main contributors: 'if' at line 20 (+4, nested 3 deep), 'while' at line 19 (+3, nested 2 deep), 'for...of' at line 18 (+2, nested 1 deep); fix: invert the 'if' at line 17 into a guard clause that returns early, so its body moves up a level; this one drops to 7.
 ```
 
 - Semicolons separate the three parts, and commas separate contributors.
@@ -53,7 +53,27 @@ Kinds are named `'if'`, `'else if'`, `'else'`, `'?:'`, `'switch'`, `'for'`, `'fo
 
 ## Fix
 
-Exactly one suggested change. It moves one region of the function into a new function, chosen so that both functions end up scoring less than this one does now.
+Exactly one suggested change, which always lowers the score: a guard clause when one saves points, and otherwise moving one region of the function into a new function. A guard comes first because it removes complexity rather than moving it, and it is a small edit that can't change behavior. Once no guard helps, the next diagnostic suggests a move.
+
+When another construct of the same kind shares its line, a construct is also given its column: `the body of the 'for' at line 105, column 11`.
+
+### Guard clause
+
+Inverting an `if` into `if (!test) return;` or `if (!test) continue;` lifts everything in its body one level, so it saves one point for each increment there that takes a nesting bonus.
+
+The rule starts from the increment to attack first: the deepest nesting, then the most points, then the earliest line. Of the `if`s that hold that increment, including the increment itself, it picks the outermost one that qualifies, which saves the most. A guard is suggested only when it saves at least one point.
+
+An `if` qualifies only when returning or continuing early would skip nothing:
+
+- it has no `else` and is the last statement of its block;
+- every enclosing block likewise ends at its owner, through `if`s without an `else`, up to a function body (`return`) or a loop body (`continue`), with or without braces;
+- an `else`, `else if`, `switch`, `try`, label or following statement anywhere on that path rules it out.
+
+Wording: `invert the 'if' at line 12 into a guard clause that returns early, so its body moves up a level; this one drops to 19`, or `… that continues to the next iteration early, …` in a loop body.
+
+### Moving a region
+
+A move is chosen so that both functions end up scoring less than this one does now.
 
 The candidate regions are:
 
@@ -76,11 +96,9 @@ Wording:
 
 Line ranges cover the region's statements, not its braces, and read `line 43` when the region is on one line.
 
-When another construct of the same kind shares its line, a construct is also given its column: `the body of the 'for' at line 105, column 11`.
-
 The numbers assume the region moves unchanged. The hint doesn't yet account for what stands in the way of that: a `return`, `break`, `continue`, `yield` or labeled jump in the region, or a variable declared in the region and used after it, needs extra handling at the call site.
 
-When no candidate qualifies, the fix is worded by the heaviest contributor, at its first line:
+When no guard or region qualifies, the fix is worded by the heaviest contributor, at its first line:
 
 | Heaviest contributor | Fix                                                                    |
 | -------------------- | ---------------------------------------------------------------------- |
@@ -90,4 +108,4 @@ When no candidate qualifies, the fix is worded by the heaviest contributor, at i
 
 ## Examples
 
-More examples, covering every label, grouping rule and kind of fix, are pinned by the snapshots in `tests/cli.test.ts`, from the fixtures in `tests/fixtures/cli/`.
+More examples, covering every label, grouping rule and kind of fix, and each case that allows or rules out a guard clause, are pinned by the snapshots in `tests/cli.test.ts`, from the fixtures in `tests/fixtures/cli/`.
