@@ -36,6 +36,6 @@ Tests run the rule through Oxlint's `RuleTester` over `tests/fixtures/`, which l
 
 ## Toolchain
 
-Development uses [Vite+](https://viteplus.dev): `vp check` for formatting, linting and type checking, `vp test` for tests and `vp pack` for the build. The `ready` and `verify` scripts in `package.json` are the only verification entry points; CI runs `verify` on GitHub-hosted runners (`.github/workflows/verify.yml`).
+Development uses [Vite+](https://viteplus.dev): `vp check` for formatting, linting and type checking, `vp test` for tests and `vp pack` for the build. Linting includes this plugin's own rule, loaded from `src/index.ts`. The `ready` and `verify` scripts in `package.json` are the only verification entry points; CI runs `verify` on GitHub-hosted runners (`.github/workflows/verify.yml`).
 
 Two TypeScript versions are installed side by side. `typescript` is TypeScript 6 (`@typescript/typescript6`), because `@typescript-eslint/parser` needs a TypeScript with a JavaScript API, and TypeScript 7 has none. TypeScript 7 is installed as `@typescript/native-preview`, where `vp pack` looks for the native compiler that generates declarations.

@@ -4,7 +4,7 @@
 
 ## Where We Are
 
-The repository is scaffolded as a Vite+ library with linting, formatting, git hooks and the `verify` CI workflow. The roadmap is planned as issues across five milestones, and the scope decisions are recorded as ADR-0001 to ADR-0003. `complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md` and reports those over `max` with a placeholder message. A differential test checks every fixture against `eslint-plugin-sonarjs`, with the whitepaper deviations pinned. JSX conditional rendering scores nothing, and TypeScript-only syntax adds nothing.
+The repository is scaffolded as a Vite+ library with linting, formatting, git hooks and the `verify` CI workflow. The roadmap is planned as issues across five milestones, and the scope decisions are recorded as ADR-0001 to ADR-0003. `complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md` and reports those over `max` with a placeholder message. A differential test checks every fixture against `eslint-plugin-sonarjs`, with the whitepaper deviations pinned. JSX conditional rendering scores nothing, and TypeScript-only syntax adds nothing. The repository lints itself with the rule.
 
 ## Features
 
@@ -15,6 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
+- Repository lints itself with its own rule (#27)
 - TypeScript and JSX syntax handled (#26)
 - Differential tests against `eslint-plugin-sonarjs` (#25)
 - Cognitive complexity scored per function (#24)
@@ -24,9 +25,9 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Up Next
 
-1. Lint this repo with its own rule (#6)
-2. Single-line, actionable diagnostics (#7)
-3. Fix hint: guard clause for the deepest `if` (#8)
+1. Single-line, actionable diagnostics (#7)
+2. Fix hint: guard clause for the deepest `if` (#8)
+3. Fix hint: extract a block into a function (#9)
 
 ## Needs Your Decision
 
