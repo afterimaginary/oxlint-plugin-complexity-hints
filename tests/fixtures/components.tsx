@@ -1,5 +1,5 @@
 // JSX and TSX: components, conditional rendering, callbacks in props, and typed
-// hooks. JSX `&&` is left out until its exclusion lands.
+// hooks. jsx.tsx covers JSX `&&` chains.
 
 type Item = { id: string; done: boolean; label?: string };
 

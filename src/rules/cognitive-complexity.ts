@@ -1,6 +1,13 @@
 import type { ESTree, Rule, Visitor } from "@oxlint/plugins";
 import { reportLocation } from "../report-location.ts";
-import { andRuns, enclosingUnit, isChainRoot, isElseIf, type FunctionUnit } from "../scoring.ts";
+import {
+	andRuns,
+	enclosingUnit,
+	isChainRoot,
+	isElseIf,
+	isJsxShortCircuit,
+	type FunctionUnit,
+} from "../scoring.ts";
 
 const DEFAULT_MAX = 15;
 
@@ -115,7 +122,7 @@ const rule: Rule = {
 			DoWhileStatement: addNested,
 			CatchClause: addNested,
 			LogicalExpression(node) {
-				if (isChainRoot(node)) {
+				if (isChainRoot(node) && !isJsxShortCircuit(node)) {
 					const runs = andRuns(node);
 
 					if (runs > 0) {

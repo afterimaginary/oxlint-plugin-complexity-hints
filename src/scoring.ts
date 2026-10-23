@@ -72,6 +72,27 @@ export function isChainRoot(node: ESTree.LogicalExpression): boolean {
 	return node.parent.type !== "LogicalExpression";
 }
 
+/**
+ * Is the chain rooted at `root` conditional rendering, like `{a && <El />}`? That
+ * is a chain directly inside a JSX expression container that uses one operator
+ * throughout and has no ternary operand.
+ */
+export function isJsxShortCircuit(root: ESTree.LogicalExpression): boolean {
+	const uniform = (node: ESTree.Node): boolean => {
+		if (node.type === "ConditionalExpression") {
+			return false;
+		}
+
+		if (node.type !== "LogicalExpression") {
+			return true;
+		}
+
+		return node.operator === root.operator && uniform(node.left) && uniform(node.right);
+	};
+
+	return root.parent.type === "JSXExpressionContainer" && uniform(root);
+}
+
 /** The number of runs of consecutive `&&` in the chain rooted at `root`. */
 export function andRuns(root: ESTree.LogicalExpression): number {
 	let runs = 0;
