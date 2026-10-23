@@ -21,7 +21,7 @@ vp run ready
 
 `vp run ready` formats, lints, type-checks and runs the tests. `vp run verify` adds the build and runs on every pull request.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to propose changes.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to propose changes, and [`docs/decisions/`](docs/decisions/) for the reasoning behind the project's scope.
 
 ## License
 
