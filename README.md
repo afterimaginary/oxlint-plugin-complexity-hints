@@ -10,6 +10,10 @@ Oxlint's JS plugin API gives a rule one line of output: no `help` text, no docs 
 
 Scores follow SonarSource's [Cognitive Complexity](https://www.sonarsource.com/docs/CognitiveComplexity.pdf) specification, so they match what SonarQube users already know.
 
+## Requirements
+
+[Oxlint](https://oxc.rs/docs/guide/usage/linter) 1.83.0 or later, which the package declares as a peer dependency.
+
 ## Development
 
 Requires [Vite+](https://viteplus.dev) (`vp`).

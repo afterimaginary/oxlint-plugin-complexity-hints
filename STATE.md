@@ -4,7 +4,7 @@
 
 ## Where We Are
 
-The repository is scaffolded as a Vite+ library with linting, formatting, git hooks and the `verify` CI workflow. The roadmap is planned as issues across five milestones, and the scope decisions are recorded as ADR-0001 to ADR-0003. No rule code exists yet; `src/` still holds the starter module.
+The repository is scaffolded as a Vite+ library with linting, formatting, git hooks and the `verify` CI workflow. The roadmap is planned as issues across five milestones, and the scope decisions are recorded as ADR-0001 to ADR-0003. The plugin loads in Oxlint and registers `complexity/cognitive-complexity`, which reports nothing yet.
 
 ## Features
 
@@ -15,14 +15,15 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
+- Plugin skeleton registered with Oxlint (#23)
 - Scope decisions recorded as ADRs (#22)
 - Project bootstrap
 
 ## Up Next
 
-1. Plugin skeleton: register `complexity/cognitive-complexity` with Oxlint (#2)
-2. Score cognitive complexity per function (#3)
-3. Differential tests against `eslint-plugin-sonarjs` (#4)
+1. Score cognitive complexity per function (#3)
+2. Differential tests against `eslint-plugin-sonarjs` (#4)
+3. Handle TypeScript- and JSX-specific syntax (#5)
 
 ## Needs Your Decision
 

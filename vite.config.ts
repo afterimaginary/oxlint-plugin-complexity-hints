@@ -37,8 +37,7 @@ export default defineConfig({
 			"@stylistic/eslint-plugin",
 		],
 		rules: {
-			// Flags imports that should come from vite-plus. Published source under src/
-			// must import @oxlint/plugins so the package works in plain Oxlint (see CLAUDE.md).
+			// Flags imports that should come from vite-plus. Turned off for src/ below.
 			"vite-plus/prefer-vite-plus-imports": "error",
 			// Braces on every block, so no one-line `if (x) return y;`.
 			curly: ["error", "all"],
@@ -63,6 +62,28 @@ export default defineConfig({
 				{ ObjectExpression: { minProperties: 4, multiline: true, consistent: true } },
 			],
 		},
+		overrides: [
+			{
+				files: ["src/**"],
+				rules: {
+					// Published code must work in plain Oxlint, without Vite+ installed, so it
+					// imports the plugin API from @oxlint/plugins.
+					"vite-plus/prefer-vite-plus-imports": "off",
+					// The package ships with no runtime dependencies and no bundled code, so
+					// @oxlint/plugins (a devDependency) may only be imported for types, and
+					// Vite+, which consumers may not have, not at all.
+					"no-restricted-imports": [
+						"error",
+						{
+							paths: [{ name: "@oxlint/plugins", allowTypeImports: true }],
+							patterns: [{ regex: "^(vite-plus|@oxlint/plugins/)" }],
+						},
+					],
+					// `import { type X }` still emits `import "..."` under verbatimModuleSyntax.
+					"typescript/no-import-type-side-effects": "error",
+				},
+			},
+		],
 		options: { typeAware: true, typeCheck: true },
 	},
 });
