@@ -15,7 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
-- Plugin skeleton registered with Oxlint (#2)
+- Plugin skeleton registered with Oxlint (#23)
 - Scope decisions recorded as ADRs (#22)
 - Project bootstrap
 
