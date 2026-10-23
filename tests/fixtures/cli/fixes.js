@@ -100,7 +100,7 @@ export function single(a) {
 	}
 }
 
-// Two constructs of one kind on a line are told apart by column.
+// Two constructs of one kind on a line are told apart by column. `done()` keeps a guard clause from applying.
 export function sameLine(a) {
-	for (;;) for (;;) if (a) if (a) a();
+	for (;;) for (;;) { if (a) if (a) a(); done(); }
 }

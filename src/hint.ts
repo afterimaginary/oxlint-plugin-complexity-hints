@@ -1,5 +1,6 @@
 import type { ESTree } from "@oxlint/plugins";
 import { kindText, type Contributor } from "./contributors.ts";
+import { findGuardClause, type GuardClause } from "./guard-clause.ts";
 import { enclosingUnit, isElseIf, type FunctionUnit, type Increment } from "./scoring.ts";
 
 /** A stretch of a unit that could move into a new function. */
@@ -234,6 +235,16 @@ function bestRun(unit: FunctionUnit, increments: readonly Increment[], total: nu
 	return best ? [best] : [];
 }
 
+function guardText(
+	{ increment, exit, saving }: GuardClause,
+	increments: readonly Increment[],
+	total: number,
+): string {
+	const early = exit === "return" ? "returns early" : "continues to the next iteration early";
+
+	return `invert the 'if' at ${position(increment, increments)} into a guard clause that ${early}, so its body moves up a level; this one drops to ${total - saving}`;
+}
+
 /** The hint when no region helps, worded by the heaviest contributor. */
 function fallbackText({ kind, line }: Contributor): string {
 	if (kind === "&&") {
@@ -248,8 +259,9 @@ function fallbackText({ kind, line }: Contributor): string {
 }
 
 /**
- * One concrete change: move the region that best splits the score, so that both
- * functions end up lower than this one is now. See "Fix" in docs/specs/diagnostics.md.
+ * One concrete change: a guard clause when one saves points, or else move the region
+ * that best splits the score, so that both functions end up lower than this one is
+ * now. See "Fix" in docs/specs/diagnostics.md.
  */
 export function suggestFix(
 	unit: FunctionUnit,
@@ -257,6 +269,13 @@ export function suggestFix(
 	total: number,
 	heaviest: Contributor,
 ): string {
+	// A guard removes complexity rather than moving it, so it comes first.
+	const guard = findGuardClause(increments);
+
+	if (guard) {
+		return guardText(guard, increments, total);
+	}
+
 	const options = [
 		...increments
 			.flatMap((increment) => regionsOf(increment, increments))
