@@ -178,6 +178,9 @@ importers:
 
   .:
     devDependencies:
+      '@oxlint/plugins':
+        specifier: 1.83.0
+        version: 1.83.0
       '@stylistic/eslint-plugin':
         specifier: ^5.10.0
         version: 5.10.0(eslint@10.13.0(jiti@2.7.0))
@@ -187,6 +190,9 @@ importers:
       bumpp:
         specifier: ^12.3.0
         version: 12.3.0
+      oxlint:
+        specifier: 1.83.0
+        version: 1.83.0(oxlint-tsgolint@7.0.2001)(vite-plus@0.3.3(@types/node@26.6.5)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
@@ -565,6 +571,10 @@ packages:
 
   '@oxlint/plugins@1.79.0':
     resolution: {integrity: sha512-S0uyoxakDINJ4DPgqxGlEEvrdSMeQb7Z2lKVjxoY2gwsbZbfg2Xr8Klfeo5ZeraHmmdBCELFUHkSe6KEmBpMvg==}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+
+  '@oxlint/plugins@1.83.0':
+    resolution: {integrity: sha512-qD64wr6SS1DL7YbJQ8WWjyUfFfrJsvAy9Vo0sG/PYUQy30w0uemN2h6j4xuvj4noyETDpzcGC20sv+FH7GrN5A==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
   '@polka/url@1.0.0-next.29':
@@ -1879,6 +1889,8 @@ snapshots:
     optional: true
 
   '@oxlint/plugins@1.79.0': {}
+
+  '@oxlint/plugins@1.83.0': {}
 
   '@polka/url@1.0.0-next.29': {}
 

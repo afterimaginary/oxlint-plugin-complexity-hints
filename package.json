@@ -40,12 +40,17 @@
 		"verify": "vp run ready && vp run build"
 	},
 	"devDependencies": {
+		"@oxlint/plugins": "1.83.0",
 		"@stylistic/eslint-plugin": "^5.10.0",
 		"@types/node": "^26.6.5",
 		"bumpp": "^12.3.0",
+		"oxlint": "1.83.0",
 		"typescript": "^7.0.2",
 		"vite": "catalog:",
 		"vite-plus": "catalog:"
+	},
+	"peerDependencies": {
+		"oxlint": ">=1.83.0"
 	},
 	"devEngines": {
 		"packageManager": {
@@ -53,5 +58,8 @@
 			"version": "12.15.0",
 			"onFail": "download"
 		}
+	},
+	"inlinedDependencies": {
+		"@oxlint/plugins": "1.83.0"
 	}
 }

@@ -33,5 +33,5 @@ release. Add a tool name to select part of the graph. For example, run
 
 ## Project notes
 
-- **Published source imports `@oxlint/plugins`, not `vite-plus/lint/plugins`.** The package must work for consumers using plain Oxlint. Disable `vite-plus/prefer-vite-plus-imports` for `src/` when the first plugin import lands.
+- **Published source imports `@oxlint/plugins`, not `vite-plus/lint/plugins`.** The package must work for consumers using plain Oxlint. A `src/**` override in `vite.config.ts` turns off `vite-plus/prefer-vite-plus-imports` and bans `vite-plus` imports, because the edit hook's `vp check --fix` otherwise rewrites them.
 - **The plugin lints itself.** Once the rule exists, register it in `vite.config.ts` from local source (`./src/index.ts`) rather than installing the published package.
