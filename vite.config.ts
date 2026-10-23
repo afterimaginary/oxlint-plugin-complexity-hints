@@ -37,8 +37,11 @@ export default defineConfig({
 		jsPlugins: [
 			{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },
 			"@stylistic/eslint-plugin",
+			// This plugin, from source, so the repository is held to its own rule.
+			{ name: "complexity", specifier: "./src/index.ts" },
 		],
 		rules: {
+			"complexity/cognitive-complexity": "error",
 			// Flags imports that should come from vite-plus. Turned off for src/ below.
 			"vite-plus/prefer-vite-plus-imports": "error",
 			// Braces on every block, so no one-line `if (x) return y;`.
