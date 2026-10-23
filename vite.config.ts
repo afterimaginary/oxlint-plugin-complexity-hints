@@ -13,6 +13,8 @@ const ignored = [
 	// Synced from claude-config; not edited here.
 	".claude/**",
 	".github/**",
+	// Scoring fixtures; formatting or lint fixes would move the lines and columns tests expect.
+	"tests/fixtures/**",
 ];
 
 export default defineConfig({
