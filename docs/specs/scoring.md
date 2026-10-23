@@ -52,7 +52,7 @@ The nesting level of a node is the number of these boundaries between it and its
 - `break`, `continue` and `return` without a label
 - optional chaining (`a?.b`, `a?.()`)
 - TypeScript-only syntax: types and annotations, interfaces, type aliases, enums, namespaces, `declare`, parameter properties, and the `as`, `satisfies`, `<T>` and `!` wrappers
-- conditional rendering: a chain directly inside a JSX expression container, such as `{a && <El />}` or `hidden={a && b}`, that uses one operator throughout and has no ternary operand. `{a && (b || c) && <El />}` and `{a && (b ? <X /> : <Y />)}` score as usual, and so does the same chain outside JSX, such as `return a && <El />`
+- conditional rendering: a chain directly inside a JSX expression container, such as `{a && <El />}` or `hidden={a && b}`, that uses one operator throughout and has no ternary operand. `{a && (b || c) && <El />}` and `{a && (b ? <X /> : <Y />)}` score as usual, and so does the same chain outside JSX, such as `return a && <El />`, or behind a type wrapper, such as `{(a && b) as boolean}`
 - the function itself, at any depth
 
 ## Deviations from the whitepaper

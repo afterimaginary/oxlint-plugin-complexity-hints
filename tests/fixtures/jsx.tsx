@@ -38,7 +38,7 @@ export function NotDirectlyInContainer({ a, b }: { a: boolean; b: boolean }) {
 	return (
 		<div>
 			{banner}
-			{(a && b) as boolean}
+			{(a && b) as boolean /* a type wrapper sits between the chain and the container */}
 			{render(a && b)}
 			{!(a && b) && <Empty />}
 			{[a && <A />]}
