@@ -19,7 +19,7 @@ Differential tests run both implementations over the same sources and fail on an
 
 ### Deviations from the whitepaper inherited from SonarJS
 
-Checked against `eslint-plugin-sonarjs` 4.2.0:
+Checked against `eslint-plugin-sonarjs` 4.2.2:
 
 | Whitepaper                                                                                                                                                                                                       | SonarJS (and this rule)                                                                                                                                                                          |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

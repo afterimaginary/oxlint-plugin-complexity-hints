@@ -56,7 +56,7 @@ The nesting level of a node is the number of these boundaries between it and its
 
 ## Deviations from the whitepaper
 
-Taken from `eslint-plugin-sonarjs` and explained in ADR-0002: recursion, `||` and `??` are not counted, and every function is scored on its own. A function that sits directly in a branch position (`a ? () => x : y`, or a sloppy-mode `if (a) function g() {}` or `else function g() {}`) does not change the nesting of the code after it. In that one case scores follow the whitepaper, not sonarjs.
+Taken from `eslint-plugin-sonarjs` and explained in ADR-0002: recursion, `||` and `??` are not counted, and every function is scored on its own. A function that sits directly in a branch position (`a ? () => x : y`, or a sloppy-mode `if (a) function g() {}` or `else function g() {}`) does not change the nesting of the code after it. In that one case scores follow the whitepaper, not sonarjs. `tests/fixtures/branch-position.js` and `branch-position-sloppy.cjs` pin these totals.
 
 ## Report location
 
