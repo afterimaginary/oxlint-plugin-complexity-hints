@@ -27,7 +27,16 @@ function lintWithRule(rule: string) {
 		}),
 	);
 
-	return spawnSync(oxlint, ["-c", config, join(work, "input.ts")], { encoding: "utf8" });
+	const result = spawnSync(oxlint, ["-c", config, join(work, "input.ts")], {
+		encoding: "utf8",
+		timeout: 30_000,
+	});
+
+	if (result.error) {
+		throw result.error;
+	}
+
+	return result;
 }
 
 describe("plugin", () => {
@@ -39,6 +48,7 @@ describe("plugin", () => {
 		expect(result.status).toBe(0);
 	});
 
+	// Control: proves the test above would fail if the rule were missing.
 	test("Oxlint rejects a rule the plugin does not register", () => {
 		const result = lintWithRule("complexity/no-such-rule");
 

@@ -69,16 +69,18 @@ export default defineConfig({
 					// Published code must work in plain Oxlint, without Vite+ installed, so it
 					// imports the plugin API from @oxlint/plugins.
 					"vite-plus/prefer-vite-plus-imports": "off",
-					// @oxlint/plugins is a devDependency whose runtime exports are no-ops, so a
-					// value import would ship a broken package. Vite+ is never a consumer
-					// dependency, so nothing in src/ may import it.
+					// The package ships with no runtime dependencies and no bundled code, so
+					// @oxlint/plugins (a devDependency) may only be imported for types, and
+					// Vite+, which consumers may not have, not at all.
 					"no-restricted-imports": [
 						"error",
 						{
 							paths: [{ name: "@oxlint/plugins", allowTypeImports: true }],
-							patterns: [{ regex: "^vite-plus(/|$)" }],
+							patterns: [{ regex: "^(vite-plus|@oxlint/plugins/)" }],
 						},
 					],
+					// `import { type X }` still emits `import "..."` under verbatimModuleSyntax.
+					"typescript/no-import-type-side-effects": "error",
 				},
 			},
 		],
