@@ -4,7 +4,7 @@
 
 ## Where We Are
 
-The repository is scaffolded as a Vite+ library with linting, formatting, git hooks and the `verify` CI workflow. The roadmap is planned as issues across five milestones, and the scope decisions are recorded as ADR-0001 to ADR-0003. `complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md` and reports those over `max` with a placeholder message.
+The repository is scaffolded as a Vite+ library with linting, formatting, git hooks and the `verify` CI workflow. The roadmap is planned as issues across five milestones, and the scope decisions are recorded as ADR-0001 to ADR-0003. `complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md` and reports those over `max` with a placeholder message. A differential test checks every fixture against `eslint-plugin-sonarjs`, with the whitepaper deviations pinned.
 
 ## Features
 
@@ -15,6 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
+- Differential tests against `eslint-plugin-sonarjs` (#4)
 - Cognitive complexity scored per function (#24)
 - Plugin skeleton registered with Oxlint (#23)
 - Scope decisions recorded as ADRs (#22)
@@ -22,9 +23,9 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Up Next
 
-1. Differential tests against `eslint-plugin-sonarjs` (#4)
-2. Handle TypeScript- and JSX-specific syntax (#5)
-3. Lint this repo with its own rule (#6)
+1. Handle TypeScript- and JSX-specific syntax (#5)
+2. Lint this repo with its own rule (#6)
+3. Single-line, actionable diagnostics (#7)
 
 ## Needs Your Decision
 
