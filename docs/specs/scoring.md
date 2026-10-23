@@ -56,18 +56,18 @@ The nesting level of a node is the number of these boundaries between it and its
 
 ## Deviations from the whitepaper
 
-Taken from `eslint-plugin-sonarjs` and explained in ADR-0002: recursion, `||` and `??` are not counted, and every function is scored on its own. A function that sits directly in a branch position (`a ? () => x : y`, or a sloppy-mode `if (a) function g() {}`) does not change the nesting of the code after it. In that one case scores follow the whitepaper, not sonarjs.
+Taken from `eslint-plugin-sonarjs` and explained in ADR-0002: recursion, `||` and `??` are not counted, and every function is scored on its own. A function that sits directly in a branch position (`a ? () => x : y`, or a sloppy-mode `if (a) function g() {}` or `else function g() {}`) does not change the nesting of the code after it. In that one case scores follow the whitepaper, not sonarjs.
 
 ## Report location
 
 A unit over the limit is reported once, at:
 
-| Unit                                                                               | Location                          |
-| ---------------------------------------------------------------------------------- | --------------------------------- |
-| function declaration with a name                                                   | the name                          |
-| method, accessor, constructor, object method, `key: function () {}`                | the key, including a computed key |
-| any other function expression, including a named one and `export default function` | the `function` keyword            |
-| arrow function                                                                     | its `=>`                          |
+| Unit                                                                                             | Location                          |
+| ------------------------------------------------------------------------------------------------ | --------------------------------- |
+| function declaration with a name                                                                 | the name                          |
+| method, accessor, constructor, object method, `key: function () {}`                              | the key, including a computed key |
+| any other function expression, including a named one, and an anonymous `export default function` | the `function` keyword            |
+| arrow function                                                                                   | its `=>`                          |
 
 These match where `eslint-plugin-sonarjs` reports.
 

@@ -30,7 +30,7 @@ Checked against `eslint-plugin-sonarjs` 4.2.0:
 
 ### Where this rule reports the whitepaper total instead
 
-The one exception is a function that sits directly in a branch position. It takes two forms: a function expression used as a ternary branch (`a ? () => a : b`), and, in sloppy-mode scripts, a function declaration used as the body of an `if`. SonarJS does not restore its nesting level after leaving such a function, so every nesting-sensitive structure that follows in the enclosing function (`if`, ternary, `switch`, loops, `catch`) is scored one level too deep. The error accumulates: each further function in a branch position adds another level. For example, `function f(a) { const x = a ? () => a : a; for (;;) {} }` scores 3 in SonarJS. The whitepaper gives 2: +1 for the ternary and +1 for the `for` at nesting zero.
+The one exception is a function that sits directly in a branch position. It takes two forms: a function expression used as a ternary branch (`a ? () => a : b`), and, in sloppy-mode scripts, a function declaration used as the body of an `if` or `else`. SonarJS does not restore its nesting level after leaving such a function, so every nesting-sensitive structure that follows in the enclosing function (`if`, ternary, `switch`, loops, `catch`) is scored one level too deep. The error accumulates: each further function in a branch position adds another level. For example, `function f(a) { const x = a ? () => a : a; for (;;) {} }` scores 3 in SonarJS. The whitepaper gives 2: +1 for the ternary and +1 for the `for` at nesting zero.
 
 This rule reports 2. Its differential tests pin the whitepaper totals for both forms and assert that SonarJS still disagrees, so a SonarJS fix shows up as a failing test and the exception can be removed.
 

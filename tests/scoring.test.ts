@@ -110,8 +110,8 @@ const expected: Record<string, string[]> = {
 	],
 	// Intentional differences from eslint-plugin-sonarjs, which reports 3 and 6 here (ADR-0002).
 	"branch-position.js": ["5:10=2", "11:10=3"],
-	// Intentional difference from eslint-plugin-sonarjs, which reports 3 (ADR-0002).
-	"branch-position-sloppy.cjs": ["5:10=2"],
+	// Intentional differences from eslint-plugin-sonarjs, which reports 3 and 4 here (ADR-0002).
+	"branch-position-sloppy.cjs": ["5:10=2", "10:10=3"],
 };
 
 const fixtures = join(import.meta.dirname, "fixtures");
