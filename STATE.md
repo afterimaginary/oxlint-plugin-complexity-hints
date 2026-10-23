@@ -15,7 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
-- Repository lints itself with its own rule (#6)
+- Repository lints itself with its own rule (#27)
 - TypeScript and JSX syntax handled (#26)
 - Differential tests against `eslint-plugin-sonarjs` (#25)
 - Cognitive complexity scored per function (#24)
