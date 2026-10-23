@@ -10,9 +10,12 @@ export const tester = new RuleTester({ languageOptions: { parserOptions: { lang:
 
 export { rule };
 
-/** The rule's message for a unit scoring `total` against `max`. */
-export function message(total: number, max = 0): string {
-	return `Cognitive complexity of this function is ${total}, over the max of ${max}.`;
+/**
+ * Matches the score part of the rule's message for a unit scoring `total` against `max`.
+ * The rest of the message is pinned by the snapshots in cli.test.ts.
+ */
+export function message(total: number, max = 0): RegExp {
+	return new RegExp(` has cognitive complexity ${total}, over the max of ${max}; `);
 }
 
 /**

@@ -1,0 +1,5 @@
+{
+	"jsPlugins": [{ "name": "complexity", "specifier": "../../../src/index.ts" }],
+	"categories": { "correctness": "off" },
+	"rules": { "complexity/cognitive-complexity": ["error", 0] }
+}
