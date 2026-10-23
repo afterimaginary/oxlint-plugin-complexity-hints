@@ -15,7 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
-- Guard-clause fix hint (#8)
+- Guard-clause fix hint (#29)
 - Single-line diagnostics with contributors and a fix (#28)
 - Repository lints itself with its own rule (#27)
 - TypeScript and JSX syntax handled (#26)
