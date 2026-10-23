@@ -121,3 +121,56 @@ export function flatInside(order) {
 		}
 	}
 }
+
+// A `do...while` body continues early too.
+export function doWhile(xs) {
+	do {
+		if (xs.length) {
+			for (const x of xs) send(x);
+		}
+	} while (next());
+}
+
+// Continuing early would skip `count++`.
+export function loopTrailing(items) {
+	let count = 0;
+	do {
+		if (items.length) {
+			for (const item of items) send(item);
+		}
+		count++;
+	} while (count < 3);
+}
+
+// An `else if` on the path.
+export function elseIfPath(a, b, c) {
+	if (a) {
+		other();
+	} else if (b) {
+		if (c) {
+			while (c) c = next(c);
+		}
+	}
+}
+
+// A label on the path.
+export function labeled(a, b) {
+	check: {
+		if (a) {
+			if (b) {
+				work();
+			}
+		}
+	}
+}
+
+// A `catch` body is neither a loop body nor a function body.
+export function inCatch(a, b) {
+	try {
+		work();
+	} catch {
+		if (a) {
+			if (b) recover();
+		}
+	}
+}

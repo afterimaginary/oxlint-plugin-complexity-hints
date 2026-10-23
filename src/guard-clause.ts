@@ -77,7 +77,8 @@ function saving(statement: ESTree.IfStatement, increments: readonly Increment[])
 
 /**
  * The guard clause that saves the most around the deepest increment: of the `if`s
- * that hold it, including the increment itself, the outermost one that qualifies.
+ * that hold it, including the increment itself, the outermost one that qualifies,
+ * when it saves at least one point.
  * See "Guard clause" in docs/specs/diagnostics.md.
  */
 export function findGuardClause(increments: readonly Increment[]): GuardClause | undefined {
@@ -102,5 +103,6 @@ export function findGuardClause(increments: readonly Increment[]): GuardClause |
 		}
 	}
 
-	return found;
+	// A guard with nothing beneath it that takes a nesting bonus is no fix.
+	return found && found.saving > 0 ? found : undefined;
 }

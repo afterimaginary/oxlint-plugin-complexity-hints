@@ -53,7 +53,7 @@ Kinds are named `'if'`, `'else if'`, `'else'`, `'?:'`, `'switch'`, `'for'`, `'fo
 
 ## Fix
 
-Exactly one suggested change, which always lowers the score: a guard clause when one saves points, and otherwise moving one region of the function into a new function. A guard comes first because it removes complexity rather than moving it, and it is a small edit that can't change behavior. Once no guard helps, the next diagnostic suggests a move.
+Exactly one suggested change, which always lowers the score: a guard clause when one saves points, and otherwise moving one region of the function into a new function. A guard comes first because it removes complexity rather than moving it, and it is a small edit that skips no code. Once no guard helps, the next diagnostic suggests a move.
 
 When another construct of the same kind shares its line, a construct is also given its column: `the body of the 'for' at line 105, column 11`.
 
@@ -68,6 +68,8 @@ An `if` qualifies only when returning or continuing early would skip nothing:
 - it has no `else` and is the last statement of its block;
 - every enclosing block likewise ends at its owner, through `if`s without an `else`, up to a function body (`return`) or a loop body (`continue`), with or without braces;
 - an `else`, `else if`, `switch`, `try`, label or following statement anywhere on that path rules it out.
+
+Moving the body up a level also moves its declarations into the enclosing block, so a `let`, `const`, `class` or function declared there can clash with a name the enclosing block already declares. The hint doesn't check for that yet.
 
 Wording: `invert the 'if' at line 12 into a guard clause that returns early, so its body moves up a level; this one drops to 19`, or `… that continues to the next iteration early, …` in a loop body.
 

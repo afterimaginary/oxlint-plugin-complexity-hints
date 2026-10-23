@@ -272,7 +272,7 @@ export function suggestFix(
 	// A guard removes complexity rather than moving it, so it comes first.
 	const guard = findGuardClause(increments);
 
-	if (guard && guard.saving > 0) {
+	if (guard) {
 		return guardText(guard, increments, total);
 	}
 
