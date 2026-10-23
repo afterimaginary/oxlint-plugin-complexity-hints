@@ -1,0 +1,57 @@
+{
+	"name": "complexity-plugin-oxlint",
+	"version": "0.0.0",
+	"description": "Cognitive complexity rule for Oxlint, with single-line diagnostics aimed at AI coding agents",
+	"keywords": [
+		"cognitive-complexity",
+		"complexity",
+		"lint",
+		"oxlint",
+		"oxlint-plugin"
+	],
+	"homepage": "https://github.com/afterimaginary/complexity-plugin-oxlint#readme",
+	"bugs": {
+		"url": "https://github.com/afterimaginary/complexity-plugin-oxlint/issues"
+	},
+	"license": "MIT",
+	"author": "afterimaginary",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/afterimaginary/complexity-plugin-oxlint.git"
+	},
+	"files": [
+		"dist"
+	],
+	"type": "module",
+	"exports": {
+		".": "./dist/index.mjs",
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "vp pack",
+		"dev": "vp pack --watch",
+		"test": "vp test",
+		"prepublishOnly": "vp run build",
+		"prepare": "vp config",
+		"ready": "vp check && vp test",
+		"verify": "vp run ready && vp run build"
+	},
+	"devDependencies": {
+		"@stylistic/eslint-plugin": "^5.10.0",
+		"@types/node": "^26.6.5",
+		"bumpp": "^12.3.0",
+		"typescript": "^7.0.2",
+		"vite": "catalog:",
+		"vite-plus": "catalog:"
+	},
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"version": "12.15.0",
+			"onFail": "download"
+		}
+	}
+}

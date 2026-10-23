@@ -1,0 +1,3 @@
+# Claude Code points every worktree at the main checkout's dispatcher, which puts
+# that checkout's toolchain on PATH, so run the vp of the checkout being committed.
+./node_modules/.bin/vp staged

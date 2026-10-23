@@ -1,0 +1,30 @@
+# Runs the project's verify suite on GitHub-hosted runners for every PR head and
+# every push to main. The merge step requires the `verify` job to pass at the PR head.
+# GitHub-hosted, not self-hosted: this repository is public-facing, and PR code from
+# forks must never run on a maintainer's machine.
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+        with:
+          node-version: "24"
+          cache: true
+      - run: vp run verify
