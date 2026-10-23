@@ -15,7 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
-- TypeScript and JSX syntax handled (#5)
+- TypeScript and JSX syntax handled (#26)
 - Differential tests against `eslint-plugin-sonarjs` (#25)
 - Cognitive complexity scored per function (#24)
 - Plugin skeleton registered with Oxlint (#23)
