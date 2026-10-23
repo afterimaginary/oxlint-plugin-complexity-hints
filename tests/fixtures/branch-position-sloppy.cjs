@@ -1,4 +1,4 @@
-// @expect 6:10=2, 11:10=3, 17:10=3, 19:16=1 (see "Deviations from the whitepaper" in docs/specs/scoring.md)
+// @expect 6:10=2, 11:10=3, 17:10=3 (see "Deviations from the whitepaper" in docs/specs/scoring.md)
 // Sloppy-mode form of branch-position.js: a function declaration as the body of an
 // `if` or `else`. eslint-plugin-sonarjs scores the loop one level too deep; this rule
 // reports the whitepaper total (ADR-0002).

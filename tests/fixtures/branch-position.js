@@ -1,4 +1,4 @@
-// @expect 6:10=2, 12:10=3, 19:10=5, 21:14=1, 26:10=2, 27:16=1, 32:10=4, 38:10=2 (see "Deviations from the whitepaper" in docs/specs/scoring.md)
+// @expect 6:10=2, 12:10=3, 19:10=5, 26:10=2, 32:10=4, 38:10=2 (see "Deviations from the whitepaper" in docs/specs/scoring.md)
 // A function directly in a branch position does not change the nesting of the code
 // after it. eslint-plugin-sonarjs scores these one level too deep for each such
 // function; this rule reports the whitepaper totals (ADR-0002).

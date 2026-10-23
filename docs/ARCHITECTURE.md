@@ -30,7 +30,7 @@ Attribution and nesting are computed from each increment's `parent` chain up to 
 
 Tests run the rule through Oxlint's `RuleTester` over `tests/fixtures/`, which lint and formatting skip so their line and column expectations stay fixed.
 
-- `tests/oracle.test.ts` uses `eslint-plugin-sonarjs` as the oracle. It runs sonarjs through ESLint and `@typescript-eslint/parser` over every fixture, and expects this rule to report the same `line:column=total` set. A fixture whose first line is `// @expect line:column=total, ...` pins its own expectations instead. That is reserved for the deviations listed in the scoring spec, and the test fails once sonarjs stops disagreeing with a pinned file.
+- `tests/oracle.test.ts` uses `eslint-plugin-sonarjs` as the oracle. It runs sonarjs through ESLint and `@typescript-eslint/parser` over every fixture, and expects this rule to report the same `line:column=total` set. A fixture whose first line is `// @expect line:column=total, ...` pins those functions' totals in place of sonarjs's, while the rest of the file is still compared. Pins are reserved for the deviations listed in the scoring spec, and the test fails once sonarjs agrees with a pin.
 - `tests/whitepaper.test.ts` holds the whitepaper's published totals, so they don't depend on the sonarjs version.
 - `tests/options.test.ts` and `tests/plugin.test.ts` cover the rule options and loading through the Oxlint CLI.
 
