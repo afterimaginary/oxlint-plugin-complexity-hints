@@ -15,7 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
-- Cognitive complexity scored per function (#3)
+- Cognitive complexity scored per function (#24)
 - Plugin skeleton registered with Oxlint (#23)
 - Scope decisions recorded as ADRs (#22)
 - Project bootstrap
