@@ -15,7 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
-- Scope decisions recorded as ADRs (#1)
+- Scope decisions recorded as ADRs (#22)
 - Project bootstrap
 
 ## Up Next
