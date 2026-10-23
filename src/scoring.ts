@@ -3,6 +3,20 @@ import type { ESTree } from "@oxlint/plugins";
 /** A node scored as its own unit: see "Function units" in docs/specs/scoring.md. */
 export type FunctionUnit = ESTree.Function | ESTree.ArrowFunctionExpression;
 
+/** One scored construct in a unit. */
+export interface Increment {
+	/** How a message names the construct, such as `'if'` or `labeled 'break'`. */
+	kind: string;
+	/** The construct's node; its range decides which region the increment moves with. */
+	node: ESTree.Node;
+	line: number;
+	points: number;
+	/** Whether this kind of construct takes a nesting bonus, even when the bonus is 0. */
+	nested: boolean;
+	/** The nesting bonus included in `points`. */
+	nesting: number;
+}
+
 export function isFunctionUnit(node: ESTree.Node): node is FunctionUnit {
 	return (
 		node.type === "FunctionDeclaration" ||

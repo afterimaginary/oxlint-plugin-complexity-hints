@@ -61,7 +61,7 @@ Taken from `eslint-plugin-sonarjs` and explained in ADR-0002: recursion, `||` an
 
 ## Report location
 
-A unit over the limit is reported once, at:
+A unit over the limit is reported once, with the message specified in [`diagnostics.md`](diagnostics.md), at:
 
 | Unit                                                                                             | Location                          |
 | ------------------------------------------------------------------------------------------------ | --------------------------------- |

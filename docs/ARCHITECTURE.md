@@ -16,12 +16,15 @@ complexity-plugin-oxlint is an Oxlint JS plugin, published as an ES module packa
 
 ## Scoring
 
-The scoring rules are specified in [`docs/specs/scoring.md`](specs/scoring.md). The code splits them three ways:
+The scoring rules are specified in [`docs/specs/scoring.md`](specs/scoring.md), and the message in [`docs/specs/diagnostics.md`](specs/diagnostics.md). The code splits them like this:
 
 | File                                | Responsibility                                                                                                                                                                |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/scoring.ts`                    | Which nodes are function units, which unit an increment belongs to and at what nesting level, how many `&&` runs a chain has, and which chains are JSX conditional rendering. |
 | `src/report-location.ts`            | Which token a unit's diagnostic points at.                                                                                                                                    |
+| `src/describe-function.ts`          | How the message names a unit.                                                                                                                                                 |
+| `src/contributors.ts`               | Grouping and ranking a unit's increments for the message.                                                                                                                     |
+| `src/hint.ts`                       | The one suggested fix: which region to move into a new function.                                                                                                              |
 | `src/rules/cognitive-complexity.ts` | The Oxlint wiring: options, one visitor per counted construct, and the report when a unit's `:exit` visitor runs.                                                             |
 
 Attribution and nesting are computed from each increment's `parent` chain up to its nearest function unit, so no state carries from one unit to another. Scores for a file live in a map that is reset in the `before` hook.

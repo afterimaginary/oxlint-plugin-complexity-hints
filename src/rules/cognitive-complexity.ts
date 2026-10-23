@@ -1,4 +1,7 @@
 import type { ESTree, Rule, Visitor } from "@oxlint/plugins";
+import { describeContributors, rankContributors } from "../contributors.ts";
+import { describeFunction } from "../describe-function.ts";
+import { suggestFix } from "../hint.ts";
 import { reportLocation } from "../report-location.ts";
 import {
 	andRuns,
@@ -7,6 +10,7 @@ import {
 	isElseIf,
 	isJsxShortCircuit,
 	type FunctionUnit,
+	type Increment,
 } from "../scoring.ts";
 
 const DEFAULT_MAX = 15;
@@ -33,7 +37,9 @@ const rule: Rule = {
 			description: "Limit the cognitive complexity of each function",
 		},
 		messages: {
-			tooComplex: "Cognitive complexity of this function is {{total}}, over the max of {{max}}.",
+			// One line: see docs/specs/diagnostics.md.
+			tooComplex:
+				"{{label}} has cognitive complexity {{total}}, over the max of {{max}}; main contributors: {{contributors}}; fix: {{fix}}.",
 		},
 		schema: [
 			{
@@ -49,42 +55,57 @@ const rule: Rule = {
 		],
 	},
 	createOnce(context) {
-		let scores = new Map<FunctionUnit, number>();
+		let increments = new Map<FunctionUnit, Increment[]>();
 		let max = DEFAULT_MAX;
 
-		/** Adds `points` to the unit `node` belongs to, plus the nesting level when `nested`. */
-		function record(node: ESTree.Node, points: number, nested: boolean): void {
+		/** Records an increment for the unit `node` belongs to, plus the nesting level when `nested`. */
+		function record(
+			node: ESTree.Node,
+			kind: string,
+			{ points = 1, nested = false, line = node.loc.start.line } = {},
+		): void {
 			const found = enclosingUnit(node);
 
 			// Code outside every function unit is not scored.
 			if (found) {
-				const increment = nested ? points + found.nesting : points;
+				const nesting = nested ? found.nesting : 0;
 
-				scores.set(found.unit, scores.get(found.unit)! + increment);
+				increments.get(found.unit)!.push({
+					kind,
+					node,
+					line,
+					points: points + nesting,
+					nested,
+					nesting,
+				});
 			}
 		}
 
 		/** +1 plus the nesting level: `if`, ternaries, `switch`, loops, `catch`. */
-		function addNested(node: ESTree.Node): void {
-			record(node, 1, true);
-		}
-
-		/** A fixed number of points: `else if`, `else`, `&&` runs, labeled jumps. */
-		function addFlat(node: ESTree.Node, points = 1): void {
-			record(node, points, false);
+		function addNested(kind: string) {
+			return (node: ESTree.Node) => record(node, kind, { nested: true });
 		}
 
 		function enterUnit(unit: FunctionUnit): void {
-			scores.set(unit, 0);
+			increments.set(unit, []);
 		}
 
 		function exitUnit(unit: FunctionUnit): void {
-			const total = scores.get(unit)!;
+			const scored = increments.get(unit)!;
+			const total = scored.reduce((sum, increment) => sum + increment.points, 0);
 
 			if (total > max) {
+				const ranked = rankContributors(scored);
+
 				context.report({
 					messageId: "tooComplex",
-					data: { total, max },
+					data: {
+						label: describeFunction(unit),
+						total,
+						max,
+						contributors: describeContributors(ranked),
+						fix: suggestFix(unit, scored, ranked[0]!),
+					},
 					loc: reportLocation(unit, context.sourceCode),
 				});
 			}
@@ -92,7 +113,7 @@ const rule: Rule = {
 
 		const visitor: Visitor = {
 			before() {
-				scores = new Map();
+				increments = new Map();
 
 				max = readMax(context.options);
 			},
@@ -104,40 +125,45 @@ const rule: Rule = {
 			"ArrowFunctionExpression:exit": exitUnit,
 			IfStatement(node) {
 				if (isElseIf(node)) {
-					addFlat(node);
+					record(node, "'else if'");
 				} else {
-					addNested(node);
+					record(node, "'if'", { nested: true });
 				}
 
 				if (node.alternate && !isElseIf(node.alternate)) {
-					addFlat(node.alternate);
+					// Kept on the `if`, so moving the `else` body leaves this increment behind.
+					const keyword = context.sourceCode.getTokenBefore(node.alternate);
+
+					record(node, "'else'", { line: keyword?.loc.start.line });
 				}
 			},
-			ConditionalExpression: addNested,
-			SwitchStatement: addNested,
-			ForStatement: addNested,
-			ForInStatement: addNested,
-			ForOfStatement: addNested,
-			WhileStatement: addNested,
-			DoWhileStatement: addNested,
-			CatchClause: addNested,
+			ConditionalExpression: addNested("'?:'"),
+			SwitchStatement: addNested("'switch'"),
+			ForStatement: addNested("'for'"),
+			ForInStatement: addNested("'for...in'"),
+			ForOfStatement(node) {
+				record(node, node.await ? "'for await...of'" : "'for...of'", { nested: true });
+			},
+			WhileStatement: addNested("'while'"),
+			DoWhileStatement: addNested("'do...while'"),
+			CatchClause: addNested("'catch'"),
 			LogicalExpression(node) {
 				if (isChainRoot(node) && !isJsxShortCircuit(node)) {
 					const runs = andRuns(node);
 
 					if (runs > 0) {
-						addFlat(node, runs);
+						record(node, "'&&'", { points: runs });
 					}
 				}
 			},
 			BreakStatement(node) {
 				if (node.label) {
-					addFlat(node);
+					record(node, "labeled 'break'");
 				}
 			},
 			ContinueStatement(node) {
 				if (node.label) {
-					addFlat(node);
+					record(node, "labeled 'continue'");
 				}
 			},
 		};
