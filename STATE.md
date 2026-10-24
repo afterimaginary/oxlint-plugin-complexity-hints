@@ -15,7 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
-- CLI output pinned in the default and agent formats, with exit codes (#11)
+- CLI output pinned in the default and agent formats, with exit codes (#32)
 - Line numbers in messages match the file for `.vue`, `.svelte` and `.astro` (#31)
 - Moves name their obstacles and count the workaround (#30)
 - Guard-clause fix hint (#29)
