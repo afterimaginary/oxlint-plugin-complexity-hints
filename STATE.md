@@ -15,7 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
-- Line numbers in messages match the file for `.vue`, `.svelte` and `.astro` (#10)
+- Line numbers in messages match the file for `.vue`, `.svelte` and `.astro` (#31)
 - Moves name their obstacles and count the workaround (#30)
 - Guard-clause fix hint (#29)
 - Single-line diagnostics with contributors and a fix (#28)
