@@ -15,6 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
+- Line numbers in messages match the file for `.vue`, `.svelte` and `.astro` (#10)
 - Moves name their obstacles and count the workaround (#30)
 - Guard-clause fix hint (#29)
 - Single-line diagnostics with contributors and a fix (#28)
@@ -28,9 +29,9 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Up Next
 
-1. Correct line numbers in `.vue`, `.svelte` and `.astro` script blocks (#10)
-2. Pin `--format agent` output with CLI tests (#11)
-3. `recommended` preset: JSON plus a typed TS export (#12)
+1. Pin `--format agent` output with CLI tests (#11)
+2. `recommended` preset: JSON plus a typed TS export (#12)
+3. Package build, exports map and a Node floor smoke test (#13)
 
 ## Needs Your Decision
 

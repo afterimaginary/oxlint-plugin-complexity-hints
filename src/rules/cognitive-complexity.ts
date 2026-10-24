@@ -3,6 +3,7 @@ import { describeContributors, rankContributors } from "../contributors.ts";
 import { describeFunction } from "../describe-function.ts";
 import { suggestFix } from "../hint.ts";
 import { reportLocation } from "../report-location.ts";
+import { scriptBlockStart, toFilePositions, type BlockStart } from "../script-block.ts";
 import {
 	andRuns,
 	enclosingUnit,
@@ -58,6 +59,7 @@ const rule: Rule = {
 	createOnce(context) {
 		let increments = new Map<FunctionUnit, Increment[]>();
 		let max = DEFAULT_MAX;
+		let blockStart: BlockStart | undefined;
 
 		/** Records an increment for the unit `node` belongs to, plus the nesting level when `nested`. */
 		function record(
@@ -97,6 +99,10 @@ const rule: Rule = {
 
 			if (total > max) {
 				const ranked = rankContributors(scored);
+				const fix = suggestFix(unit, scored, total, ranked[0]!, context.sourceCode.scopeManager);
+
+				// Read from disk once per file, and only when something is reported.
+				blockStart ??= scriptBlockStart(context.physicalFilename, context.sourceCode.text);
 
 				context.report({
 					messageId: "tooComplex",
@@ -104,8 +110,8 @@ const rule: Rule = {
 						label: describeFunction(unit),
 						total,
 						max,
-						contributors: describeContributors(ranked),
-						fix: suggestFix(unit, scored, total, ranked[0]!, context.sourceCode.scopeManager),
+						contributors: toFilePositions(describeContributors(ranked), blockStart),
+						fix: toFilePositions(fix, blockStart),
 					},
 					loc: reportLocation(unit, context.sourceCode),
 				});
@@ -115,6 +121,8 @@ const rule: Rule = {
 		const visitor: Visitor = {
 			before() {
 				increments = new Map();
+
+				blockStart = undefined;
 
 				max = readMax(context.options);
 			},

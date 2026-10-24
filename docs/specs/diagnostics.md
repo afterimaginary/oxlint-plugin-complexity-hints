@@ -19,6 +19,15 @@ Function 'deep' has cognitive complexity 10, over the max of 0; main contributor
 - Semicolons separate the three parts, and commas separate contributors.
 - The part `has cognitive complexity <total>, over the max of <max>` is stable. Tooling may match on it.
 - The message never contains a newline: see [Function label](#function-label).
+- Every position in it is worded `line N`, `lines N-M` or `line N, column M`, counted in the file. See [Embedded scripts](#embedded-scripts).
+
+## Embedded scripts
+
+Oxlint lints each script block of a `.vue`, `.svelte` or `.astro` file (and Astro's frontmatter) on its own, and the rule sees only that block. Oxlint corrects the diagnostic's location, so the rule corrects the positions in the message to match: it finds the block's text in the file on disk and adds the lines before it. A column on the block's first line also gets the columns before it on that line, such as those of `<script>`.
+
+- When the file can't be read or no longer contains the block, as with an unsaved editor buffer, positions stay relative to the block.
+- Two identical blocks in one file both map to the first.
+- Other files are linted whole, so their positions are never changed.
 
 ## Function label
 

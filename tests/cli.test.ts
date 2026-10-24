@@ -159,6 +159,22 @@ describe("diagnostics in --format agent", () => {
 		`);
 	});
 
+	test("give lines in the file, not the script block, for .vue, .svelte and .astro", () => {
+		const files = ["component.vue", "inline.vue", "widget.svelte", "page.astro"];
+
+		expect(files.flatMap((file) => agentLines(`embedded/${file}`))).toMatchInlineSnapshot(`
+			[
+			  "tests/fixtures/cli/embedded/component.vue:8:10: error complexity(cognitive-complexity): Function 'plain' has cognitive complexity 15, over the max of 0; main contributors: 3 'if' at lines 9-11 (+3), 'if' at line 13 (+3, nested 2 deep), 'if' at line 14 (+3, nested 2 deep); fix: move lines 13-14 (the body of the 'for...of' at line 12) into a new function; this one drops to 5 and the new one scores 6.",
+			  "tests/fixtures/cli/embedded/component.vue:21:10: error complexity(cognitive-complexity): Function 'setup' has cognitive complexity 15, over the max of 0; main contributors: 3 'if' at lines 22-24 (+3), 'if' at line 26 (+3, nested 2 deep), 'if' at line 27 (+3, nested 2 deep); fix: move lines 26-27 (the body of the 'for...of' at line 25) into a new function; this one drops to 5 and the new one scores 6.",
+			  "tests/fixtures/cli/embedded/inline.vue:2:18: error complexity(cognitive-complexity): Function 'sameLine' has cognitive complexity 11, over the max of 0; main contributors: 2 'if' at line 2 (+6, nested 2 deep), 2 'for...of' at line 2 (+4, nested 1 deep), 'if' at line 2 (+1); fix: invert the 'if' at line 2, column 33 into a guard clause that returns early, so its body moves up a level; this one drops to 7.",
+			  "tests/fixtures/cli/embedded/inline.vue:3:10: error complexity(cognitive-complexity): Function 'nextLine' has cognitive complexity 11, over the max of 0; main contributors: 2 'if' at line 3 (+6, nested 2 deep), 2 'for...of' at line 3 (+4, nested 1 deep), 'if' at line 3 (+1); fix: invert the 'if' at line 3, column 25 into a guard clause that returns early, so its body moves up a level; this one drops to 7.",
+			  "tests/fixtures/cli/embedded/widget.svelte:6:10: error complexity(cognitive-complexity): Function 'instance' has cognitive complexity 15, over the max of 0; main contributors: 3 'if' at lines 7-9 (+3), 'if' at line 11 (+3, nested 2 deep), 'if' at line 12 (+3, nested 2 deep); fix: move lines 11-12 (the body of the 'for...of' at line 10) into a new function; this one drops to 5 and the new one scores 6.",
+			  "tests/fixtures/cli/embedded/page.astro:2:10: error complexity(cognitive-complexity): Function 'frontmatter' has cognitive complexity 15, over the max of 0; main contributors: 3 'if' at lines 3-5 (+3), 'if' at line 7 (+3, nested 2 deep), 'if' at line 8 (+3, nested 2 deep); fix: move lines 7-8 (the body of the 'for...of' at line 6) into a new function; this one drops to 5 and the new one scores 6.",
+			  "tests/fixtures/cli/embedded/page.astro:17:10: error complexity(cognitive-complexity): Function 'client' has cognitive complexity 15, over the max of 0; main contributors: 3 'if' at lines 18-20 (+3), 'if' at line 22 (+3, nested 2 deep), 'if' at line 23 (+3, nested 2 deep); fix: move lines 22-23 (the body of the 'for...of' at line 21) into a new function; this one drops to 5 and the new one scores 6.",
+			]
+		`);
+	});
+
 	test("are one line each, with no newline inside a message", () => {
 		const { diagnostics } = JSON.parse(lint("labels.ts", "json")) as {
 			diagnostics: { message: string }[];
