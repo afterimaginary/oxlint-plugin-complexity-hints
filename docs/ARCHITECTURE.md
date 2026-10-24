@@ -4,15 +4,20 @@ complexity-plugin-oxlint is an Oxlint JS plugin, published as an ES module packa
 
 ## Layout
 
-| Path     | Contents                                                                                           |
-| -------- | -------------------------------------------------------------------------------------------------- |
-| `src/`   | Plugin source. Imports the plugin API from `@oxlint/plugins` so the package works in plain Oxlint. |
-| `tests/` | Vitest suites, run with `vp test`.                                                                 |
-| `dist/`  | Build output from `vp pack`. Not committed.                                                        |
+| Path               | Contents                                                                                           |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `src/`             | Plugin source. Imports the plugin API from `@oxlint/plugins` so the package works in plain Oxlint. |
+| `tests/`           | Vitest suites, run with `vp test`.                                                                 |
+| `dist/`            | Build output from `vp pack`. Not committed.                                                        |
+| `recommended.json` | The preset for `.oxlintrc.json`, written by `vp pack`. Not committed.                              |
 
 ## Plugin
 
 `src/index.ts` default-exports the Oxlint plugin `complexity`, which registers one rule per file in `src/rules/`. Today that is `cognitive-complexity` (`src/rules/cognitive-complexity.ts`). Oxlint loads the entry either from `dist/` or straight from source through Node's type stripping, which is why relative imports carry `.ts` extensions. The package has no runtime dependencies: `@oxlint/plugins` supplies types only, and `oxlint` is a peer dependency.
+
+## Preset
+
+`src/recommended.ts` holds the `recommended` preset (ADR-0003) as a typed config, published as `complexity-plugin-oxlint/recommended` for `extends` in `oxlint.config.ts`. A `build:done` hook in the `pack` block of `vite.config.ts` writes the same object to `recommended.json` at the package root, for `.oxlintrc.json`. The TypeScript file is the one source of both, and `tests/recommended.test.ts` builds the package and lints through each form as an installed copy.
 
 ## Scoring
 

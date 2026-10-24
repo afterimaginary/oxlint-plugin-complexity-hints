@@ -1,4 +1,6 @@
+import { writeFile } from "node:fs/promises";
 import { defineConfig } from "vite-plus";
+import recommended from "./src/recommended.ts";
 
 // Single-line declarations that may stay grouped without blank lines.
 const declarations = [
@@ -22,11 +24,18 @@ export default defineConfig({
 		"*": "vp check --fix",
 	},
 	pack: {
+		entry: ["src/index.ts", "src/recommended.ts"],
 		deps: { resolveDepSubpath: true },
 		dts: {
 			generator: "tsgo",
 		},
 		exports: true,
+		hooks: {
+			// The preset for `.oxlintrc.json`, from the same source as the typed export.
+			"build:done": async () => {
+				await writeFile("recommended.json", `${JSON.stringify(recommended, null, "\t")}\n`);
+			},
+		},
 	},
 	fmt: {
 		useTabs: true,

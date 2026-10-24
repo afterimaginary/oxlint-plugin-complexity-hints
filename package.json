@@ -20,11 +20,13 @@
 		"url": "git+https://github.com/afterimaginary/complexity-plugin-oxlint.git"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"recommended.json"
 	],
 	"type": "module",
 	"exports": {
 		".": "./dist/index.mjs",
+		"./recommended": "./dist/recommended.mjs",
 		"./package.json": "./package.json"
 	},
 	"publishConfig": {
