@@ -18,7 +18,8 @@ Scores follow SonarSource's [Cognitive Complexity](https://www.sonarsource.com/d
 
 ## Requirements
 
-[Oxlint](https://oxc.rs/docs/guide/usage/linter) 1.83.0 or later, which the package declares as a peer dependency.
+- [Oxlint](https://oxc.rs/docs/guide/usage/linter) 1.83.0 or later, which the package declares as a peer dependency.
+- Node.js `^20.19.0 || >=22.12.0`, the same as Oxlint.
 
 ## Development
 
@@ -29,7 +30,7 @@ vp install
 vp run ready
 ```
 
-`vp run ready` formats, lints, type-checks and runs the tests. `vp run verify` adds the build and runs on every pull request.
+`vp run ready` formats, lints, type-checks and runs the tests. `vp run verify` adds the build and checks on the built package, and runs on every pull request.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how to propose changes, and [`docs/decisions/`](docs/decisions/) for the reasoning behind the project's scope.
 

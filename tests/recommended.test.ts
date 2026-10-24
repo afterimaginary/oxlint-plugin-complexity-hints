@@ -106,4 +106,16 @@ describe("the recommended preset", () => {
 	test("is the same through recommended.json and the typed export", () => {
 		expect(lint("oxlint.config.ts")).toEqual(lint("oxlintrc.json"));
 	});
+
+	// The published declarations, not the source: a build that widened `"error"` to
+	// `string` would fail here.
+	test("type-checks in a strict oxlint.config.ts, as installed", () => {
+		const tsc = spawnSync(
+			join(root, "node_modules/.bin/tsc"),
+			["--noEmit", "--strict", "--module", "nodenext", "--skipLibCheck", "oxlint.config.ts"],
+			{ cwd: project, encoding: "utf8" },
+		);
+
+		expect(tsc.status, tsc.stdout).toBe(0);
+	});
 });
