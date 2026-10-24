@@ -448,3 +448,55 @@ export function innerVariables(xs, ys) {
 	}
 	tail();
 }
+
+// A labeled and an unlabeled jump to the same loop: the caller can use the plain one.
+export function labelOptional(xs) {
+	outer: for (const x of xs) {
+		if (x.ok) {
+			for (const y of x.ys) if (y) log(y);
+			for (const z of x.zs) if (z) log(z);
+			if (x.done) break outer;
+			if (x.last) break;
+		}
+		tick();
+	}
+	tail();
+}
+
+// Continuing the region's own loop falls off the end, so the return is on some paths only.
+export function continuesThenReturns(xs) {
+	for (const x of xs) {
+		if (!x) continue;
+		for (const y of x.ys) if (y) log(y);
+		for (const z of x.zs) if (z) log(z);
+		return x;
+	}
+	tail();
+}
+
+// A closure that writes a variable declared in the region moves with it.
+export function closureOwnVar(rows, ys) {
+	if (rows) {
+		for (const y of ys) if (y) log(y);
+		for (const z of ys) if (z) log(z);
+		let total = 0;
+		rows.forEach((row) => {
+			total += row.n;
+		});
+		log(total);
+	}
+	tail();
+}
+
+// A region that always returns still hands back what a closure reads.
+export function returnsReadByClosure(xs, ys) {
+	let value = 0;
+	const get = () => value;
+	if (xs) {
+		for (const x of xs) if (x) log(x);
+		for (const y of ys) if (y) log(y);
+		value = xs.length;
+		return;
+	}
+	tail(get);
+}

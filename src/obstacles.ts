@@ -68,6 +68,8 @@ interface Flow {
 	jumps: Jump[];
 	/** Labeled jumps that leave the region; each is an increment the new function loses. */
 	labeledLeaving: number;
+	/** A jump that ends the region, which becomes a plain `return` in the new function. */
+	endsRegion: boolean;
 	awaits: boolean;
 	yields: boolean;
 	usings: boolean;
@@ -149,10 +151,9 @@ function recordJump(
 	// Continuing the loop whose body the region is, or breaking out of the `switch` whose
 	// case it is, ends the region, so it becomes a plain `return`. Breaking out of the
 	// region's own loop does not: the caller still has to stop the loop.
-	const endsRegion =
-		target === region.owner && (kind === "continue" || target.type === "SwitchStatement");
-
-	if (!endsRegion) {
+	if (target === region.owner && (kind === "continue" || target.type === "SwitchStatement")) {
+		flow.endsRegion = true;
+	} else {
 		flow.jumps.push({ kind, label, target });
 	}
 }
@@ -209,6 +210,7 @@ function flowOf(region: RegionShape): Flow {
 		returns: [],
 		jumps: [],
 		labeledLeaving: 0,
+		endsRegion: false,
 		awaits: false,
 		yields: false,
 		usings: region.nodes.some(isUsing),
@@ -295,8 +297,16 @@ function carryingLoops(region: RegionShape, variable: Variable): ESTree.Node[] {
 	return loops;
 }
 
-/** Is a new value written in `region` read later: after it, on a loop's next pass, or by a closure? */
-function isObserved(variable: Variable, region: RegionShape, scopes: UnitScopes): boolean {
+/**
+ * Is a new value written in `region` read later: after it, on a loop's next pass, or by a
+ * closure? When the region `exits` the unit on every path, only a closure can read it.
+ */
+function isObserved(
+	variable: Variable,
+	region: RegionShape,
+	scopes: UnitScopes,
+	exits: boolean,
+): boolean {
 	if (outsideUnit(variable, scopes.unit)) {
 		// The unit can run again, and anything around it may read the value.
 		return true;
@@ -307,9 +317,10 @@ function isObserved(variable: Variable, region: RegionShape, scopes: UnitScopes)
 	return variable.references.some(
 		(reference) =>
 			reference.isRead() &&
-			(reference.identifier.start > region.end ||
-				functionOf(reference) !== scopes.unit ||
-				loops.some((loop) => inside(reference.identifier, loop))),
+			(functionOf(reference) !== scopes.unit ||
+				(!exits &&
+					(reference.identifier.start > region.end ||
+						loops.some((loop) => inside(reference.identifier, loop))))),
 	);
 }
 
@@ -335,7 +346,12 @@ function declarationLine(region: RegionShape, variables: readonly Variable[]): n
 
 type Verdict = "none" | "reassigned" | "declared" | "skip";
 
-function classify(variable: Variable, region: RegionShape, scopes: UnitScopes): Verdict {
+function classify(
+	variable: Variable,
+	region: RegionShape,
+	scopes: UnitScopes,
+	exits: boolean,
+): Verdict {
 	const defsIn = variable.defs.filter((def) => inside(def.name, region));
 
 	// An initial value counts too: with a declaration outside as well, `var x = …` reassigns.
@@ -344,18 +360,21 @@ function classify(variable: Variable, region: RegionShape, scopes: UnitScopes): 
 	);
 
 	// A closure created in the region that writes the variable can't hand the value back.
-	if (writesIn.some((reference) => functionOf(reference) !== scopes.unit)) {
+	const closureWrites = writesIn.some((reference) => functionOf(reference) !== scopes.unit);
+
+	if (defsIn.length > 0 && defsIn.length === variable.defs.length) {
+		return classifyDeclared(variable, region, closureWrites || exits);
+	}
+
+	if (closureWrites) {
 		return "skip";
 	}
 
-	if (defsIn.length > 0 && defsIn.length === variable.defs.length) {
-		return classifyDeclared(variable, region);
-	}
-
-	return writesIn.length > 0 && isObserved(variable, region, scopes) ? "reassigned" : "none";
+	return writesIn.length > 0 && isObserved(variable, region, scopes, exits) ? "reassigned" : "none";
 }
 
-function classifyDeclared(variable: Variable, region: RegionShape): Verdict {
+/** `stays` when a use outside the region rules out handing the variable back. */
+function classifyDeclared(variable: Variable, region: RegionShape, stays: boolean): Verdict {
 	const outside = variable.references.filter((reference) => !inside(reference.identifier, region));
 
 	if (outside.length === 0) {
@@ -366,27 +385,27 @@ function classifyDeclared(variable: Variable, region: RegionShape): Verdict {
 	const usesBefore = outside.some((reference) => reference.identifier.start < region.start);
 	const disposed = variable.defs.some((def) => def.parent && isUsing(def.parent));
 
-	return usesBefore || disposed ? "skip" : "declared";
+	return usesBefore || disposed || stays ? "skip" : "declared";
 }
 
-/** The variables `region` refers to that a move could cut off, or `undefined` to skip it. */
-function dataOf(region: RegionShape, scopes: UnitScopes): Data | undefined {
+/**
+ * The variables `region` refers to that a move could cut off, or `undefined` to skip it.
+ * `exits`: the region returns on every path, so the code after it never runs.
+ */
+function dataOf(region: RegionShape, scopes: UnitScopes, exits: boolean): Data | undefined {
 	const variables = new Set<Variable>();
 
 	for (const reference of scopes.references) {
 		const { resolved } = reference;
 		const kind = resolved?.scope.type;
 
-		// Module-level variables reach a new function anywhere in the module, and ones
-		// scoped inside the region move with it.
-		const reaches =
+		// Module-level variables reach a new function anywhere in the module.
+		if (
 			resolved &&
 			kind !== "module" &&
 			kind !== "global" &&
-			!inside(resolved.scope.block, region) &&
-			inside(reference.identifier, region);
-
-		if (reaches) {
+			inside(reference.identifier, region)
+		) {
 			variables.add(resolved);
 		}
 	}
@@ -395,7 +414,7 @@ function dataOf(region: RegionShape, scopes: UnitScopes): Data | undefined {
 	const declared: Variable[] = [];
 
 	for (const variable of variables) {
-		const verdict = classify(variable, region, scopes);
+		const verdict = classify(variable, region, scopes, exits);
 
 		if (verdict === "skip") {
 			return undefined;
@@ -499,12 +518,15 @@ function dataClause({ reassigned, declared, declareBefore }: Data): string {
 
 // Putting it together ----------------------------------------------------------------
 
-/** One jump target for every leaving jump, or `undefined` when they differ. */
+/**
+ * One jump target for every leaving jump, or `undefined` when they differ. When an
+ * unlabeled jump reaches the target, the caller needs no label either.
+ */
 function sharedJump(jumps: readonly Jump[]): Jump | undefined {
 	const [first] = jumps;
 
 	return jumps.every(({ kind, target }) => kind === first?.kind && target === first.target)
-		? first
+		? (jumps.find((jump) => !jump.label) ?? first)
 		: undefined;
 }
 
@@ -552,7 +574,10 @@ function freeClauses(flow: Flow, { everyPath, bare }: Returns): string[] {
 
 function returnsOf(flow: Flow, region: RegionShape): Returns | undefined {
 	const any = flow.returns.length > 0;
-	const everyPath = any && flow.jumps.length === 0 && exits(region.nodes.at(-1));
+
+	const everyPath =
+		any && flow.jumps.length === 0 && !flow.endsRegion && exits(region.nodes.at(-1));
+
 	const bare = flow.returns.every(isBare);
 
 	// Some bare and some valued returns on some paths: no one value tells the caller what to do.
@@ -576,8 +601,7 @@ export function obstaclesOf(region: RegionShape, scopes: UnitScopes): Obstacles 
 		return undefined;
 	}
 
-	// Code after a region that always returns never runs, so nothing it writes is read.
-	const data = returns.everyPath ? { reassigned: [], declared: [] } : dataOf(region, scopes);
+	const data = dataOf(region, scopes, returns.everyPath);
 
 	if (!data || (region.ternary && hasNames(data))) {
 		return undefined;

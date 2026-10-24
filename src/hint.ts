@@ -256,8 +256,10 @@ function runningTotals(statements: readonly ESTree.Node[], increments: readonly 
 	return before;
 }
 
-/** Every run of consecutive statements, short of the whole body, as `[from, to]`. */
-/** Shortest first, since a short run is likelier to have nothing in its way. */
+/**
+ * Every run of consecutive statements, short of the whole body, as `[from, to]`, shortest
+ * first, since a short run is likelier to have nothing in its way.
+ */
 function* runsOf(count: number): Generator<[number, number]> {
 	for (let length = 1; length < count; length++) {
 		for (let from = 0; from + length <= count; from++) {
@@ -266,32 +268,45 @@ function* runsOf(count: number): Generator<[number, number]> {
 	}
 }
 
-/** The first `RUNS_ANALYSED` runs, in source order, whose score before obstacles is `score`. */
-function runsScoring(
-	count: number,
-	score: number,
-	base: (run: [number, number]) => number,
+/**
+ * The runs worth analysing: of those at the lowest score before obstacles, and of those
+ * one above it, the first `RUNS_ANALYSED` each, shortest first. A run's score before
+ * obstacles is just its points, from running totals.
+ */
+function cheapestRuns(
+	statements: readonly ESTree.Node[],
+	increments: readonly Increment[],
+	total: number,
 ): [number, number][] {
-	const found: [number, number][] = [];
+	const before = runningTotals(statements, increments);
+	let lowest = Infinity;
+	// The runs at `lowest`, then at `lowest + 1`.
+	let found: [number, number][][] = [[], []];
 
-	for (const run of runsOf(count)) {
-		if (found.length === RUNS_ANALYSED) {
-			break;
+	for (const run of runsOf(statements.length)) {
+		const removed = before[run[1] + 1]! - before[run[0]]!;
+		const score = Math.max(total - removed, removed);
+
+		if (score < lowest) {
+			found = score === lowest - 1 ? [[], found[0]!] : [[], []];
+
+			lowest = score;
 		}
 
-		if (base(run) === score) {
-			found.push(run);
+		const runs = found[score - lowest];
+
+		if (runs && runs.length < RUNS_ANALYSED) {
+			runs.push(run);
 		}
 	}
 
-	return found;
+	return found.flat();
 }
 
 /**
- * Runs of consecutive statements in the unit's body. A run's score before obstacles is
- * just its points, from running totals. Obstacles can only add one point (an `if` at
- * depth 0), so only runs at the lowest score or one above can win; of each, the first
- * `RUNS_ANALYSED`, shortest first, are analysed. See "Statement runs" in the spec.
+ * Runs of consecutive statements in the unit's body. Obstacles can only add one point
+ * (an `if` at depth 0), so only runs at the lowest score or one above can win. See
+ * "Statement runs" in the spec.
  */
 function runOptions(
 	unit: FunctionUnit,
@@ -300,30 +315,15 @@ function runOptions(
 	scopes: UnitScopes,
 ): Option[] {
 	const statements = unit.body?.type === "BlockStatement" ? unit.body.body : [];
-	const before = runningTotals(statements, increments);
 
-	const base = ([from, to]: [number, number]) => {
-		const removed = before[to + 1]! - before[from]!;
+	return cheapestRuns(statements, increments, total).flatMap(([from, to]) => {
+		const [region] = statementsRegion(statements.slice(from, to + 1), {
+			depth: 0,
+			disposesEarly: to < statements.length - 1,
+		});
 
-		return Math.max(total - removed, removed);
-	};
-
-	let lowest = Infinity;
-
-	for (const run of runsOf(statements.length)) {
-		lowest = Math.min(lowest, base(run));
-	}
-
-	return [lowest, lowest + 1].flatMap((score) =>
-		runsScoring(statements.length, score, base).flatMap(([from, to]) => {
-			const [region] = statementsRegion(statements.slice(from, to + 1), {
-				depth: 0,
-				disposesEarly: to < statements.length - 1,
-			});
-
-			return evaluate(region!, increments, total, scopes) ?? [];
-		}),
-	);
+		return evaluate(region!, increments, total, scopes) ?? [];
+	});
 }
 
 function guardText(
