@@ -15,6 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
+- CLI output pinned in the default and agent formats, with exit codes (#32)
 - Line numbers in messages match the file for `.vue`, `.svelte` and `.astro` (#31)
 - Moves name their obstacles and count the workaround (#30)
 - Guard-clause fix hint (#29)
@@ -29,9 +30,9 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Up Next
 
-1. Pin `--format agent` output with CLI tests (#11)
-2. `recommended` preset: JSON plus a typed TS export (#12)
-3. Package build, exports map and a Node floor smoke test (#13)
+1. `recommended` preset: JSON plus a typed TS export (#12)
+2. Package build, exports map and a Node floor smoke test (#13)
+3. README and rule docs for users (#14)
 
 ## Needs Your Decision
 

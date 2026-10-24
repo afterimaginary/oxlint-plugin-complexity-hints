@@ -5,19 +5,32 @@ import { describe, expect, test } from "vite-plus/test";
 const root = join(import.meta.dirname, "..");
 const oxlint = join(root, "node_modules/.bin/oxlint");
 
-/** Runs the Oxlint CLI from the repository root over a file in tests/fixtures/cli/, at max 0. */
-function lint(file: string, format: string): string {
+// Oxlint turns on colors and a Unicode code frame under `CI` or `FORCE_COLOR`, even with
+// `NO_COLOR` set, so neither reaches it.
+const { CI: _ci, FORCE_COLOR: _forceColor, ...plainEnv } = process.env;
+
+/**
+ * Runs the Oxlint CLI from the repository root over a file in tests/fixtures/cli/, at max 0.
+ * The format is always given: without one, Oxlint picks `agent` when it detects an agent.
+ * Colors are off, so the output doesn't depend on the terminal or CI.
+ */
+function lint(file: string, format: string): { stdout: string; status: number | null } {
 	const result = spawnSync(
 		oxlint,
 		["-c", "tests/fixtures/cli/oxlintrc.json", "--format", format, `tests/fixtures/cli/${file}`],
-		{ cwd: root, encoding: "utf8", timeout: 30_000 },
+		{
+			cwd: root,
+			encoding: "utf8",
+			timeout: 30_000,
+			env: { ...plainEnv, NO_COLOR: "1" },
+		},
 	);
 
 	if (result.error) {
 		throw result.error;
 	}
 
-	return result.stdout;
+	return { stdout: result.stdout, status: result.status };
 }
 
 /** Agent-format diagnostics in line order; Oxlint's own order isn't stable. */
@@ -25,7 +38,7 @@ function agentLines(file: string): string[] {
 	const line = (diagnostic: string) => Number(diagnostic.split(":")[1]);
 
 	return lint(file, "agent")
-		.split("\n")
+		.stdout.split("\n")
 		.filter((diagnostic) => diagnostic.includes("complexity(cognitive-complexity)"))
 		.sort((a, b) => line(a) - line(b));
 }
@@ -176,7 +189,7 @@ describe("diagnostics in --format agent", () => {
 	});
 
 	test("are one line each, with no newline inside a message", () => {
-		const { diagnostics } = JSON.parse(lint("labels.ts", "json")) as {
+		const { diagnostics } = JSON.parse(lint("labels.ts", "json").stdout) as {
 			diagnostics: { message: string }[];
 		};
 
@@ -187,5 +200,38 @@ describe("diagnostics in --format agent", () => {
 		}
 
 		expect(agentLines("labels.ts")).toHaveLength(diagnostics.length);
+	});
+});
+
+describe("the Oxlint CLI", () => {
+	test("prints the default format with the message and a code frame", () => {
+		const { stdout } = lint("format.js", "default");
+		// Timing and thread counts vary from run to run.
+		const stable = stdout.replace(/^Finished in .*$/m, "Finished in …");
+
+		expect(stable).toMatchInlineSnapshot(`
+			"
+			  x complexity(cognitive-complexity): Function 'format' has cognitive complexity 3, over the max of 0; main contributors: 'if' at line 4 (+2, nested 1 deep), 'for...of' at line 3 (+1); fix: move line 4 (the body of the 'for...of' at line 3) into a new function; this one drops to 1 and the new one scores 1.
+			   ,-[tests/fixtures/cli/format.js:2:17]
+			 1 | // One diagnostic, to pin the default format.
+			 2 | export function format(rows) {
+			   :                 ^^^^^^
+			 3 |     for (const row of rows) {
+			   \`----
+
+			Found 0 warnings and 1 error.
+			Finished in …
+			"
+		`);
+	});
+
+	test("exits with 1 when a function is over the max, reported as an error, and 0 when none is", () => {
+		expect(lint("format.js", "default").status).toBe(1);
+
+		expect(lint("format.js", "agent").status).toBe(1);
+
+		expect(lint("clean.js", "default").status).toBe(0);
+
+		expect(lint("clean.js", "agent").status).toBe(0);
 	});
 });
