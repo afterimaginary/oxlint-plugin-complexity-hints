@@ -14,13 +14,12 @@ const project = mkdtempSync(join(tmpdir(), "complexity-preset-"));
 // running plain Oxlint doesn't have it.
 const { VP_VERSION: _vpVersion, ...consumerEnv } = process.env;
 
-// Type-checked with the repository: the typed export must fit `extends` as it is.
-const typed = defineConfig({ extends: [recommended] });
+/** Functions just over and at the default max of 15, and just over and at `max-params` at 5. */
+const input = `export function overMax(a, b, c, d, e) {
+${"\tif (a) log(b, c, d, e);\n".repeat(16)}}
 
-/** A function over the default max, one at `max-params`, and one over it. */
-const input = `export function deep(a1, a2, a3, a4, a5) {
-	if (a1) { if (a2) { if (a3) { if (a4) { if (a5) { if (a1) { log(); } } } } } }
-}
+export function atMax(a) {
+${"\tif (a) log(a);\n".repeat(15)}}
 
 export function wide(a, b, c, d, e, f) {
 	return a + b + c + d + e + f;
@@ -79,6 +78,11 @@ function lint(config: string): string[] {
 		{ cwd: project, encoding: "utf8", env: consumerEnv },
 	);
 
+	// When Oxlint can't load the config, it prints why instead of the JSON.
+	if (!result.stdout.startsWith("{")) {
+		throw new Error(result.stdout + result.stderr);
+	}
+
 	const { diagnostics } = JSON.parse(result.stdout) as {
 		diagnostics: { code: string; labels: { span: { line: number } }[] }[];
 	};
@@ -90,11 +94,12 @@ function lint(config: string): string[] {
 
 describe("the recommended preset", () => {
 	test("enables cognitive-complexity at its default max and max-params at 5", () => {
-		expect(typed.extends).toEqual([recommended]);
+		// Type-checked with the repository: the typed export must fit `extends` as it is.
+		defineConfig({ extends: [recommended] });
 
 		expect(lint("oxlintrc.json")).toEqual([
 			"1 complexity(cognitive-complexity)",
-			"5 eslint(max-params)",
+			"38 eslint(max-params)",
 		]);
 	});
 

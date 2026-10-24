@@ -17,7 +17,7 @@ complexity-plugin-oxlint is an Oxlint JS plugin, published as an ES module packa
 
 ## Preset
 
-`src/recommended.ts` holds the `recommended` preset (ADR-0003) as a typed config, published as `complexity-plugin-oxlint/recommended` for `extends` in `oxlint.config.ts`. A `build:done` hook in the `pack` block of `vite.config.ts` writes the same object to `recommended.json` at the package root, for `.oxlintrc.json`. The TypeScript file is the one source of both, and `tests/recommended.test.ts` builds the package and lints through each form as an installed copy.
+`src/recommended.ts` holds the `recommended` preset (ADR-0003) as a typed config, published as `complexity-plugin-oxlint/recommended` for `extends` in `oxlint.config.ts`. A `build:done` hook in the `pack` block of `vite.config.ts` reads the built module back and writes the same object to `recommended.json` at the package root, for `.oxlintrc.json`. The TypeScript file is the one source of both, and `tests/recommended.test.ts` builds the package and lints through each form as an installed copy.
 
 ## Scoring
 

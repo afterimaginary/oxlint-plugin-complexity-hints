@@ -1,7 +1,7 @@
 node_modules
 dist
 # Written by the build from src/recommended.ts.
-recommended.json
+/recommended.json
 *.log
 .DS_Store
 
