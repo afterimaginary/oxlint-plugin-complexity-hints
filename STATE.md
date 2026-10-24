@@ -15,7 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
-- `recommended` preset as `recommended.json` and a typed export, from one source (#12)
+- `recommended` preset as `recommended.json` and a typed export, from one source (#33)
 - CLI output pinned in the default and agent formats, with exit codes (#32)
 - Line numbers in messages match the file for `.vue`, `.svelte` and `.astro` (#31)
 - Moves name their obstacles and count the workaround (#30)
