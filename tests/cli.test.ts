@@ -5,11 +5,14 @@ import { describe, expect, test } from "vite-plus/test";
 const root = join(import.meta.dirname, "..");
 const oxlint = join(root, "node_modules/.bin/oxlint");
 
+// Oxlint turns on colors and a Unicode code frame under `CI` or `FORCE_COLOR`, even with
+// `NO_COLOR` set, so neither reaches it.
+const { CI: _ci, FORCE_COLOR: _forceColor, ...plainEnv } = process.env;
+
 /**
  * Runs the Oxlint CLI from the repository root over a file in tests/fixtures/cli/, at max 0.
  * The format is always given: without one, Oxlint picks `agent` when it detects an agent.
- * Colors are off, even when the environment forces them, so the output doesn't depend on
- * the terminal.
+ * Colors are off, so the output doesn't depend on the terminal or CI.
  */
 function lint(file: string, format: string): { stdout: string; status: number | null } {
 	const result = spawnSync(
@@ -19,7 +22,7 @@ function lint(file: string, format: string): { stdout: string; status: number | 
 			cwd: root,
 			encoding: "utf8",
 			timeout: 30_000,
-			env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
+			env: { ...plainEnv, NO_COLOR: "1" },
 		},
 	);
 
