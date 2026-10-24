@@ -8,7 +8,8 @@ const oxlint = join(root, "node_modules/.bin/oxlint");
 /**
  * Runs the Oxlint CLI from the repository root over a file in tests/fixtures/cli/, at max 0.
  * The format is always given: without one, Oxlint picks `agent` when it detects an agent.
- * Colors are off, so the output doesn't depend on the terminal.
+ * Colors are off, even when the environment forces them, so the output doesn't depend on
+ * the terminal.
  */
 function lint(file: string, format: string): { stdout: string; status: number | null } {
 	const result = spawnSync(
@@ -18,7 +19,7 @@ function lint(file: string, format: string): { stdout: string; status: number | 
 			cwd: root,
 			encoding: "utf8",
 			timeout: 30_000,
-			env: { ...process.env, NO_COLOR: "1" },
+			env: { ...process.env, FORCE_COLOR: "0", NO_COLOR: "1" },
 		},
 	);
 
@@ -221,7 +222,7 @@ describe("the Oxlint CLI", () => {
 		`);
 	});
 
-	test("exits with 1 when a function is over the max, and 0 when none is", () => {
+	test("exits with 1 when a function is over the max, reported as an error, and 0 when none is", () => {
 		expect(lint("format.js", "default").status).toBe(1);
 
 		expect(lint("format.js", "agent").status).toBe(1);

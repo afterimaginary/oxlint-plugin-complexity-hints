@@ -40,7 +40,7 @@ Tests run the rule through Oxlint's `RuleTester` over `tests/fixtures/`, which l
 - `tests/whitepaper.test.ts` holds the whitepaper's published totals, so they don't depend on the sonarjs version.
 - `tests/options.test.ts` and `tests/plugin.test.ts` cover the rule options and loading through the Oxlint CLI.
 - `tests/cli.test.ts` runs the repository's Oxlint binary over `tests/fixtures/cli/` and snapshots what users and agents see: every diagnostic in `--format agent`, one in the default format, and the exit codes. Its config is `tests/fixtures/cli/oxlintrc.json`, not `.oxlintrc.json`, so Oxlint never picks it up on its own. It always names the format, since Oxlint switches to `agent` when it detects an agent.
-- `tests/script-block.test.ts` covers the fallbacks for embedded scripts that the CLI can't show, such as an unsaved buffer.
+- `tests/script-block.test.ts` covers where an embedded script block starts, for the cases the CLI can't show: Windows line endings, and the fallbacks such as an unsaved buffer.
 
 ## Toolchain
 
