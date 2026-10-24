@@ -1,3 +1,6 @@
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { defineConfig } from "vite-plus";
 
 // Single-line declarations that may stay grouped without blank lines.
@@ -22,11 +25,23 @@ export default defineConfig({
 		"*": "vp check --fix",
 	},
 	pack: {
+		entry: ["src/index.ts", "src/recommended.ts"],
 		deps: { resolveDepSubpath: true },
 		dts: {
 			generator: "tsgo",
 		},
 		exports: true,
+		hooks: {
+			// The preset for `.oxlintrc.json`, read back from the typed export just built, so a
+			// rebuild in watch mode writes the edited preset too.
+			"build:done": async ({ options }) => {
+				const built = pathToFileURL(join(options.outDir, "recommended.mjs"));
+				const { default: preset } = await import(`${built.href}?build=${Date.now()}`);
+				const json = `${JSON.stringify(preset, null, "\t")}\n`;
+
+				await writeFile(join(import.meta.dirname, "recommended.json"), json);
+			},
+		},
 	},
 	fmt: {
 		useTabs: true,

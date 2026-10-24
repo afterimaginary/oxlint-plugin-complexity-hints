@@ -10,11 +10,12 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 - [x] `complexity/cognitive-complexity` rule
 - [x] Single-line, actionable diagnostics (#7)
-- [ ] `recommended` preset (#12)
+- [x] `recommended` preset (#12)
 - [ ] Published to npm (#19)
 
 ## Recently Done
 
+- `recommended` preset as `recommended.json` and a typed export, from one source (#33)
 - CLI output pinned in the default and agent formats, with exit codes (#32)
 - Line numbers in messages match the file for `.vue`, `.svelte` and `.astro` (#31)
 - Moves name their obstacles and count the workaround (#30)
@@ -30,9 +31,9 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Up Next
 
-1. `recommended` preset: JSON plus a typed TS export (#12)
-2. Package build, exports map and a Node floor smoke test (#13)
-3. README and rule docs for users (#14)
+1. Package build, exports map and a Node floor smoke test (#13)
+2. README and rule docs for users (#14)
+3. Property-based differential fuzzing against sonarjs (#15)
 
 ## Needs Your Decision
 
