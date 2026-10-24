@@ -18,7 +18,8 @@ const AT_FILE_START: BlockStart = { lines: 0, columns: 0 };
 /**
  * Where `text` starts in the file on disk, found verbatim. The start of the file when
  * that fails: not an embedded script, an unreadable file, or a block that no longer
- * matches it, such as an unsaved editor buffer. Two identical blocks map to the first.
+ * matches it, such as an unsaved editor buffer. Text that appears more than once maps to
+ * where it first appears.
  */
 export function scriptBlockStart(filename: string, text: string): BlockStart {
 	if (!EMBEDDED_SCRIPTS.some((extension) => filename.endsWith(extension))) {

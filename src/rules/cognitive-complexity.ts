@@ -101,7 +101,7 @@ const rule: Rule = {
 				const ranked = rankContributors(scored);
 				const fix = suggestFix(unit, scored, total, ranked[0]!, context.sourceCode.scopeManager);
 
-				// Read from disk once per file, and only when something is reported.
+				// Read from disk once per script block, and only when something is reported.
 				blockStart ??= scriptBlockStart(context.physicalFilename, context.sourceCode.text);
 
 				context.report({

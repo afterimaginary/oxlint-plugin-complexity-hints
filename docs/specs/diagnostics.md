@@ -26,7 +26,8 @@ Function 'deep' has cognitive complexity 10, over the max of 0; main contributor
 Oxlint lints each script block of a `.vue`, `.svelte` or `.astro` file (and Astro's frontmatter) on its own, and the rule sees only that block. Oxlint corrects the diagnostic's location, so the rule corrects the positions in the message to match: it finds the block's text in the file on disk and adds the lines before it. A column on the block's first line also gets the columns before it on that line, such as those of `<script>`.
 
 - When the file can't be read or no longer contains the block, as with an unsaved editor buffer, positions stay relative to the block.
-- Two identical blocks in one file both map to the first.
+- When only the markup around the block has unsaved changes, the block is still found, at its saved position, so the message's positions can be off from the location until the file is saved.
+- A block whose text also appears earlier in the file, such as two identical blocks, maps to where it first appears.
 - Other files are linted whole, so their positions are never changed.
 
 ## Function label
