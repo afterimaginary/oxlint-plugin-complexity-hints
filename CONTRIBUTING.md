@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in improving complexity-plugin-oxlint.
+Thanks for your interest in improving oxlint-plugin-complexity-hints.
 
 ## Before you start
 

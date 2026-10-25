@@ -9,7 +9,7 @@ import type { OxlintConfig } from "oxlint";
  * `string`, which `OxlintConfig` rejects.
  */
 const recommended = {
-	jsPlugins: ["complexity-plugin-oxlint"],
+	jsPlugins: ["oxlint-plugin-complexity-hints"],
 	rules: {
 		"complexity/cognitive-complexity": "error",
 		"max-params": ["error", { max: 5 }],
