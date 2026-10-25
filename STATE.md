@@ -15,7 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
-- Fix hints evaluated on pinned open-source repositories (#PR)
+- Fix hints evaluated on pinned open-source repositories (#37)
 - Fuzzed against `eslint-plugin-sonarjs` on random programs (#36)
 - README and rule docs for users, with their examples checked against the rule (#35)
 - Package contents checked, and the build loads on Node 20.19 (#34)
