@@ -28,3 +28,9 @@ jobs:
           node-version: "24"
           cache: true
       - run: vp run verify
+      # The built package on the oldest Node that `engines.node` allows, which matches
+      # Oxlint's own floor.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "20.19.0"
+      - run: node scripts/smoke-dist.mjs 20.19.0

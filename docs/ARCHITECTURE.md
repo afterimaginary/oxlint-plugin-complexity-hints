@@ -8,6 +8,7 @@ complexity-plugin-oxlint is an Oxlint JS plugin, published as an ES module packa
 | ------------------ | -------------------------------------------------------------------------------------------------- |
 | `src/`             | Plugin source. Imports the plugin API from `@oxlint/plugins` so the package works in plain Oxlint. |
 | `tests/`           | Vitest suites, run with `vp test`.                                                                 |
+| `scripts/`         | Checks on the built package, run by `verify`: its contents and a load on the Node floor.           |
 | `dist/`            | Build output from `vp pack`. Not committed.                                                        |
 | `recommended.json` | The preset for `.oxlintrc.json`, written by `vp pack`. Not committed.                              |
 
@@ -50,5 +51,7 @@ Tests run the rule through Oxlint's `RuleTester` over `tests/fixtures/`, which l
 ## Toolchain
 
 Development uses [Vite+](https://viteplus.dev): `vp check` for formatting, linting and type checking, `vp test` for tests and `vp pack` for the build. Linting includes this plugin's own rule, loaded from `src/index.ts`. The `ready` and `verify` scripts in `package.json` are the only verification entry points; CI runs `verify` on GitHub-hosted runners (`.github/workflows/verify.yml`).
+
+`verify` ends with two checks on the built package. `scripts/check-package.mjs` compares what `pnpm pack` would publish with a fixed list of files. `scripts/smoke-dist.mjs` loads `dist/` with plain `node`, checks that the plugin registers `cognitive-complexity` and that both forms of the preset agree, then runs the built rule through Oxlint on the same Node. CI runs the smoke test again on Node 20.19.0, the floor of `engines.node`, which matches Oxlint's own, and the script fails if it finds a different Node. Development and CI otherwise use Node 24, set by `.node-version`, so `engines.node` stays a consumer-facing range.
 
 Two TypeScript versions are installed side by side. `typescript` is TypeScript 6 (`@typescript/typescript6`), because `@typescript-eslint/parser` needs a TypeScript with a JavaScript API, and TypeScript 7 has none. TypeScript 7 is installed as `@typescript/native-preview`, where `vp pack` looks for the native compiler that generates declarations.

@@ -39,7 +39,7 @@
 		"prepublishOnly": "vp run build",
 		"prepare": "vp config",
 		"ready": "vp check && vp test",
-		"verify": "vp run ready && vp run build"
+		"verify": "vp run ready && vp run build && node scripts/check-package.mjs && node scripts/smoke-dist.mjs"
 	},
 	"devDependencies": {
 		"@oxlint/plugins": "1.83.0",
@@ -64,6 +64,9 @@
 			"version": "12.15.0",
 			"onFail": "download"
 		}
+	},
+	"engines": {
+		"node": "^20.19.0 || >=22.12.0"
 	},
 	"inlinedDependencies": {
 		"@oxlint/plugins": "1.83.0"

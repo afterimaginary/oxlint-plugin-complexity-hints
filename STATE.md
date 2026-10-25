@@ -15,6 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
+- Package contents checked, and the build loads on Node 20.19 (#34)
 - `recommended` preset as `recommended.json` and a typed export, from one source (#33)
 - CLI output pinned in the default and agent formats, with exit codes (#32)
 - Line numbers in messages match the file for `.vue`, `.svelte` and `.astro` (#31)
@@ -31,9 +32,9 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Up Next
 
-1. Package build, exports map and a Node floor smoke test (#13)
-2. README and rule docs for users (#14)
-3. Property-based differential fuzzing against sonarjs (#15)
+1. README and rule docs for users (#14)
+2. Property-based differential fuzzing against sonarjs (#15)
+3. Real-world evaluation harness for hint quality (#16)
 
 ## Needs Your Decision
 
