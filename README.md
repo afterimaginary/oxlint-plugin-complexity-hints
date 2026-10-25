@@ -1,4 +1,4 @@
-# complexity-plugin-oxlint
+# oxlint-plugin-complexity-hints
 
 A cognitive complexity rule for [Oxlint](https://oxc.rs/docs/guide/usage/linter), with single-line diagnostics written for AI coding agents running a lint loop.
 
@@ -55,13 +55,13 @@ Each suggested change lowers the score. Once the agent makes it, the next run sc
 Requires Oxlint 1.83.0 or later, and Node.js `^20.19.0 || >=22.12.0`.
 
 ```bash
-npm install --save-dev oxlint complexity-plugin-oxlint
+npm install --save-dev oxlint oxlint-plugin-complexity-hints
 ```
 
 With [Vite+](https://viteplus.dev), which bundles Oxlint (`vp toolchain oxlint` shows its version):
 
 ```bash
-vp add -D complexity-plugin-oxlint
+vp add -D oxlint-plugin-complexity-hints
 ```
 
 ## Configure
@@ -72,7 +72,7 @@ The `recommended` preset turns on `complexity/cognitive-complexity` at its defau
 
 ```json
 {
-	"extends": ["./node_modules/complexity-plugin-oxlint/recommended.json"]
+	"extends": ["./node_modules/oxlint-plugin-complexity-hints/recommended.json"]
 }
 ```
 
@@ -80,7 +80,7 @@ The `recommended` preset turns on `complexity/cognitive-complexity` at its defau
 
 ```ts
 import { defineConfig } from "oxlint";
-import recommended from "complexity-plugin-oxlint/recommended";
+import recommended from "oxlint-plugin-complexity-hints/recommended";
 
 export default defineConfig({
 	extends: [recommended],
@@ -91,7 +91,7 @@ export default defineConfig({
 
 ```ts
 import { defineConfig } from "vite-plus";
-import recommended from "complexity-plugin-oxlint/recommended";
+import recommended from "oxlint-plugin-complexity-hints/recommended";
 
 export default defineConfig({
 	lint: {
@@ -104,9 +104,20 @@ To use the rule without the preset, load the plugin and turn the rule on:
 
 ```json
 {
-	"jsPlugins": ["complexity-plugin-oxlint"],
+	"jsPlugins": ["oxlint-plugin-complexity-hints"],
 	"rules": {
 		"complexity/cognitive-complexity": "error"
+	}
+}
+```
+
+The plugin registers itself as `complexity`. If a project already loads another JS plugin under that name, load this one under an alias, and use the alias as the rule's prefix. The preset loads the plugin under its own name, so use this form instead of the preset, and turn on `max-params` yourself if you want it:
+
+```json
+{
+	"jsPlugins": [{ "name": "complexity-hints", "specifier": "oxlint-plugin-complexity-hints" }],
+	"rules": {
+		"complexity-hints/cognitive-complexity": "error"
 	}
 }
 ```
@@ -121,7 +132,7 @@ To change it, set the rule after `extends`:
 
 ```json
 {
-	"extends": ["./node_modules/complexity-plugin-oxlint/recommended.json"],
+	"extends": ["./node_modules/oxlint-plugin-complexity-hints/recommended.json"],
 	"rules": {
 		"complexity/cognitive-complexity": ["error", { "max": 20 }]
 	}

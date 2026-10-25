@@ -1,5 +1,5 @@
 {
-	"name": "complexity-plugin-oxlint",
+	"name": "oxlint-plugin-complexity-hints",
 	"version": "0.0.0",
 	"description": "Cognitive complexity rule for Oxlint, with single-line diagnostics aimed at AI coding agents",
 	"keywords": [
@@ -9,15 +9,15 @@
 		"oxlint",
 		"oxlint-plugin"
 	],
-	"homepage": "https://github.com/afterimaginary/complexity-plugin-oxlint#readme",
+	"homepage": "https://github.com/afterimaginary/oxlint-plugin-complexity-hints#readme",
 	"bugs": {
-		"url": "https://github.com/afterimaginary/complexity-plugin-oxlint/issues"
+		"url": "https://github.com/afterimaginary/oxlint-plugin-complexity-hints/issues"
 	},
 	"license": "MIT",
 	"author": "afterimaginary",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/afterimaginary/complexity-plugin-oxlint.git"
+		"url": "git+https://github.com/afterimaginary/oxlint-plugin-complexity-hints.git"
 	},
 	"files": [
 		"dist",

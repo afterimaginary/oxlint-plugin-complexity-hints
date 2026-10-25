@@ -16,10 +16,11 @@ The diagnostic text is what sets this plugin apart, so the next milestone, "Revi
 - [ ] Every hint kind's promise checked on real code (#40)
 - [ ] Hint strategy chosen by simulation and an agent benchmark (#41, #42, #43)
 - [ ] Scoped checker that reports only what a change is responsible for (#44)
-- [ ] Published to npm as `oxlint-plugin-complexity-hints` (#38, #19)
+- [ ] Published to npm as `oxlint-plugin-complexity-hints` (#19)
 
 ## Recently Done
 
+- Renamed to `oxlint-plugin-complexity-hints`, with the plugin alias documented (#38)
 - Fix hints evaluated on pinned open-source repositories (#37)
 - Fuzzed against `eslint-plugin-sonarjs` on random programs (#36)
 - README and rule docs for users, with their examples checked against the rule (#35)
@@ -28,13 +29,12 @@ The diagnostic text is what sets this plugin apart, so the next milestone, "Revi
 
 ## Up Next
 
-1. Rename the package to `oxlint-plugin-complexity-hints` (#38)
-2. Make the README's claims match the evidence, and state the limits (#39)
-3. Check move-hint promises in the hint evaluation (#40)
+1. Make the README's claims match the evidence, and state the limits (#39)
+2. Check move-hint promises in the hint evaluation (#40)
+3. Simulate the lint loop to compare hint strategies (#41)
 
 ## Needs Your Decision
 
-- Renaming the GitHub repository (#38).
 - Agent runner, model and token budget for the agent benchmark (#42), when the work reaches it.
 - Command name and flags for the scoped checker (#44), when the work reaches it.
 - Release tool and npm publishing setup (#19), and launch timing (#20).

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig } from "oxlint";
@@ -41,7 +41,7 @@ beforeAll(() => {
 
 	mkdirSync(join(project, "node_modules"));
 
-	symlinkSync(root, join(project, "node_modules/complexity-plugin-oxlint"));
+	symlinkSync(root, join(project, "node_modules/oxlint-plugin-complexity-hints"));
 
 	symlinkSync(join(root, "node_modules/oxlint"), join(project, "node_modules/oxlint"));
 
@@ -51,14 +51,23 @@ beforeAll(() => {
 
 	writeFileSync(
 		join(project, "oxlintrc.json"),
-		'{ "extends": ["./node_modules/complexity-plugin-oxlint/recommended.json"] }\n',
+		'{ "extends": ["./node_modules/oxlint-plugin-complexity-hints/recommended.json"] }\n',
 	);
+
+	// The aliased form, taken from the README so the two can't drift apart.
+	const aliased = [
+		...readFileSync(join(root, "README.md"), "utf8").matchAll(/^```json\n([\s\S]*?)^```$/gm),
+	].find(([, body]) => body!.includes('"specifier"'));
+
+	expect(aliased, "README has no aliased jsPlugins example").toBeDefined();
+
+	writeFileSync(join(project, "aliased.json"), aliased![1]!);
 
 	writeFileSync(
 		join(project, "oxlint.config.ts"),
 		[
 			'import { defineConfig } from "oxlint";',
-			'import recommended from "complexity-plugin-oxlint/recommended";',
+			'import recommended from "oxlint-plugin-complexity-hints/recommended";',
 			"",
 			"export default defineConfig({ extends: [recommended] });",
 			"",
@@ -117,5 +126,11 @@ describe("the recommended preset", () => {
 		);
 
 		expect(tsc.status, tsc.stdout).toBe(0);
+	});
+});
+
+describe("the installed plugin, without the preset", () => {
+	test("loads under an alias, which prefixes its rule", () => {
+		expect(lint("aliased.json")).toEqual(["1 complexity-hints(cognitive-complexity)"]);
 	});
 });
