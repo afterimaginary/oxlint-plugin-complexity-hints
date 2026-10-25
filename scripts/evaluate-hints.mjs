@@ -71,43 +71,53 @@ function checkout(repository) {
 	const dir = join(cache, repository.name.toLowerCase());
 	const head = existsSync(dir) ? run("git", ["rev-parse", "HEAD"], dir).stdout.trim() : "";
 
-	if (head !== repository.commit) {
-		rmSync(dir, { recursive: true, force: true });
+	if (head === repository.commit) {
+		// A run that was stopped can leave a guard copy behind, which would be linted.
+		run("git", ["clean", "-fdq"], dir);
 
-		mkdirSync(dir, { recursive: true });
+		return dir;
+	}
 
-		run("git", ["init", "-q"], dir);
+	rmSync(dir, { recursive: true, force: true });
 
-		const fetch = run(
-			"git",
-			["fetch", "-q", "--depth", "1", repository.url, repository.commit],
-			dir,
-		);
+	mkdirSync(dir, { recursive: true });
 
-		if (fetch.status !== 0) {
-			throw new Error(`Couldn't fetch ${repository.name}: ${fetch.stderr}`);
+	run("git", ["init", "-q"], dir);
+
+	for (const args of [
+		["fetch", "-q", "--depth", "1", repository.url, repository.commit],
+		["-c", "advice.detachedHead=false", "checkout", "-q", "FETCH_HEAD"],
+	]) {
+		const step = run("git", args, dir);
+
+		if (step.status !== 0) {
+			throw new Error(`Couldn't check out ${repository.name}: ${step.stderr}`);
 		}
-
-		run("git", ["-c", "advice.detachedHead=false", "checkout", "-q", "FETCH_HEAD"], dir);
 	}
 
 	return dir;
 }
 
+const configs = new Map();
+
 /** A config with the rule from this repository's source at `max`, and nothing else on. */
 function config(max) {
-	const file = join(cache, `oxlintrc-${max}.json`);
+	if (!configs.has(max)) {
+		const file = join(cache, `oxlintrc-${max}.json`);
 
-	writeFileSync(
-		file,
-		JSON.stringify({
-			jsPlugins: [{ name: "complexity", specifier: join(root, "src/index.ts") }],
-			categories: { correctness: "off" },
-			rules: { "complexity/cognitive-complexity": ["error", max] },
-		}),
-	);
+		writeFileSync(
+			file,
+			JSON.stringify({
+				jsPlugins: [{ name: "complexity", specifier: join(root, "src/index.ts") }],
+				categories: { correctness: "off" },
+				rules: { "complexity/cognitive-complexity": ["error", max] },
+			}),
+		);
 
-	return file;
+		configs.set(max, file);
+	}
+
+	return configs.get(max);
 }
 
 /** Oxlint's JSON report for `paths` in `dir`. */
@@ -127,6 +137,7 @@ function lint(dir, paths, max) {
 
 const RULE = "complexity(cognitive-complexity)";
 
+// The harness reads the rule's messages, worded as docs/specs/diagnostics.md specifies.
 const GUARD =
 	/invert the 'if' at line (\d+)(?:, column (\d+))? into a guard clause that (returns|continues)[^;]*; this one drops to (\d+)\.$/;
 
@@ -151,36 +162,49 @@ const hasObstacle = (message) =>
 
 const score = (message) => Number(/has cognitive complexity (\d+)/.exec(message)[1]);
 
-/** The `if` that starts at `line` (and `column`, 1-based, when given). */
-function findIf(node, line, column) {
+const FUNCTIONS = new Set(["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"]);
+
+const LOOPS = new Set([
+	"ForStatement",
+	"ForInStatement",
+	"ForOfStatement",
+	"WhileStatement",
+	"DoWhileStatement",
+]);
+
+/** Every `if` that starts at `line` (and `column`, 1-based, when given), with its ancestors. */
+function findIfs(node, line, column, ancestors = []) {
 	if (!node || typeof node.type !== "string") {
-		return undefined;
+		return [];
 	}
 
 	const { start } = node.loc;
 
-	if (
-		node.type === "IfStatement" &&
-		start.line === line &&
-		(!column || start.column + 1 === column)
-	) {
-		return node;
-	}
+	const here =
+		node.type === "IfStatement" && start.line === line && (!column || start.column + 1 === column);
 
-	for (const [key, value] of Object.entries(node)) {
-		const children = key === "parent" ? [] : [value].flat();
-		const found = children.map((child) => findIf(child, line, column)).find(Boolean);
+	const below = [...ancestors, node];
 
-		if (found) {
-			return found;
-		}
-	}
+	const children = Object.values(node)
+		.flat()
+		.flatMap((child) => findIfs(child, line, column, below));
 
-	return undefined;
+	return here ? [{ statement: node, ancestors }, ...children] : children;
 }
 
-/** `source` with the `if` turned into a guard clause, as the hint says. */
-function invert(source, statement, exit) {
+/** How an early exit from the innermost function or loop around `ancestors` leaves. */
+function exitOf(ancestors) {
+	const owner = ancestors.findLast(({ type }) => FUNCTIONS.has(type) || LOOPS.has(type));
+
+	return owner && LOOPS.has(owner.type) ? "continues" : "returns";
+}
+
+/**
+ * `source` with the `if` turned into a guard clause, as the hint says. Where the `if`
+ * isn't in a block, such as the body of a loop without braces, the guard and the body
+ * get braces, so the body stays where it was.
+ */
+function invert(source, { statement, ancestors }, exit) {
 	const { test, consequent } = statement;
 	const [start, end] = consequent.range;
 
@@ -190,8 +214,9 @@ function invert(source, statement, exit) {
 			: source.slice(start, end);
 
 	const guard = `if (!(${source.slice(...test.range)})) ${exit === "returns" ? "return" : "continue"};\n${body}`;
+	const braced = ancestors.at(-1).type === "BlockStatement" ? guard : `{\n${guard}\n}`;
 
-	return source.slice(0, statement.range[0]) + guard + source.slice(statement.range[1]);
+	return source.slice(0, statement.range[0]) + braced + source.slice(statement.range[1]);
 }
 
 /**
@@ -210,36 +235,62 @@ function applyGuard(dir, diagnostic) {
 		jsx: extname(file).endsWith("x"),
 	});
 
-	const statement = findIf(ast, Number(line), column && Number(column));
+	// A guard never has an `else`, which tells it apart from an `else if` on the same line.
+	const target = findIfs(ast, Number(line), column && Number(column)).find(
+		({ statement }) => !statement.alternate,
+	);
+
 	const result = { before: score(diagnostic.message), promised: Number(promised) };
 
-	if (!statement) {
+	if (!target) {
 		return { ...result, outcome: "not found" };
+	}
+
+	if (exitOf(target.ancestors) !== exit) {
+		return { ...result, outcome: "wrong exit" };
 	}
 
 	const copy = join(dirname(file), `.hint-eval-${basename(file)}`);
 
-	writeFileSync(copy, invert(source, statement, exit));
+	writeFileSync(copy, invert(source, target, exit));
 
 	try {
-		const { span } = diagnostic.labels[0];
-		const report = lint(dir, [copy], 0).diagnostics;
-
-		const same = report.find(
-			({ code, labels }) =>
-				code === RULE && labels[0].span.line === span.line && labels[0].span.column === span.column,
-		);
-
-		if (report.some(({ code }) => code !== RULE)) {
-			return { ...result, outcome: "doesn't parse" };
-		}
-
-		const after = same ? score(same.message) : 0;
-
-		return { ...result, after, outcome: outcomeOf(result.before, after, result.promised) };
+		return { ...result, ...rescore(dir, copy, diagnostic, result) };
 	} finally {
 		rmSync(copy);
 	}
+}
+
+/**
+ * The function's new score in `copy`, linted at max 0 so every function that scores at
+ * all is reported. The report sits at the function's name, keyword or `=>`, before the
+ * body, so the edit never moves it.
+ */
+function rescore(dir, copy, diagnostic, { before, promised }) {
+	const report = lint(dir, [copy], 0);
+
+	if (report.number_of_files !== 1) {
+		throw new Error(`Oxlint linted ${report.number_of_files} files for ${copy}`);
+	}
+
+	// With every other rule off, anything else is a parse error, such as a name clash.
+	if (report.diagnostics.some(({ code }) => code !== RULE)) {
+		return { outcome: "doesn't parse" };
+	}
+
+	const { span } = diagnostic.labels[0];
+
+	const same = report.diagnostics.find(
+		({ labels }) => labels[0].span.line === span.line && labels[0].span.column === span.column,
+	);
+
+	if (!same) {
+		return promised === 0 ? { after: 0, outcome: "as promised" } : { outcome: "not reported" };
+	}
+
+	const after = score(same.message);
+
+	return { after, outcome: outcomeOf(before, after, promised) };
 }
 
 function outcomeOf(before, after, promised) {
@@ -282,6 +333,29 @@ function evaluate(repository) {
 
 const percent = (part, whole) => (whole === 0 ? "–" : `${Math.round((part / whole) * 100)}%`);
 
+/** One line per diagnostic in a repository: where, which function, its score and its hint. */
+function listing({ name, diagnostics, guards }) {
+	const applied = new Map(guards.map((guard) => [guard.where, guard]));
+
+	const lines = diagnostics.map(({ filename, labels, message }) => {
+		const where = `${filename}:${labels[0].span.line}`;
+		const label = message.slice(0, message.indexOf(" has cognitive complexity"));
+		const guard = applied.get(where);
+		const result = guard ? `: ${guard.outcome}, to ${guard.after ?? "?"}` : "";
+
+		return `- \`${where}\` ${label}, ${score(message)}, ${kindOf(message)}${result}`;
+	});
+
+	return [
+		`<details><summary>${name}: ${diagnostics.length}</summary>`,
+		"",
+		...lines,
+		"",
+		"</details>",
+		"",
+	];
+}
+
 /** The summary page, in Markdown. */
 function summary(results) {
 	const guards = results.flatMap(({ name, guards }) => guards.map((guard) => ({ name, ...guard })));
@@ -291,6 +365,8 @@ function summary(results) {
 		"lower, not as promised",
 		"not lower",
 		"doesn't parse",
+		"wrong exit",
+		"not reported",
 		"not found",
 	];
 
@@ -360,11 +436,22 @@ function summary(results) {
 				: [],
 		),
 		"",
+		"## What the outcomes mean",
+		"",
+		"- **as promised**: the function now scores what the hint said.",
+		"- **lower, not as promised** and **not lower**: the score changed by a different amount, or not at all.",
+		"- **doesn't parse**: Oxlint rejects the rewritten file, for example because a name declared in the body now clashes with one in the enclosing block.",
+		"- **wrong exit**: the hint says `return` where the `if` sits in a loop body, or `continue` where it sits in a function body.",
+		"- **not reported** and **not found**: the script couldn't find the function again, or the `if` the hint names.",
+		"",
 		"## Not measured",
 		"",
-		"- Whether a guard clause keeps behavior. The rule only suggests one when returning or continuing early skips nothing, but a name declared in the body can clash once it moves up a level, which the hint doesn't check yet (see `docs/specs/diagnostics.md`).",
+		"- Whether a guard clause keeps behavior in ways a parser can't see: a name declared in the body that now shadows an outer one, or one used earlier in the block, before its declaration. The rule doesn't check these yet (see `docs/specs/diagnostics.md`).",
 		"- Moves. Applying one means writing a new function and its call, with any workaround the hint names, which this script doesn't attempt.",
 		"",
+		"## Every diagnostic",
+		"",
+		...results.flatMap(listing),
 	].join("\n");
 }
 
