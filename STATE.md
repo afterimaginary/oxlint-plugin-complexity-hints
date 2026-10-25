@@ -15,7 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
-- README and rule docs for users, with their examples checked against the rule (#PR)
+- README and rule docs for users, with their examples checked against the rule (#35)
 - Package contents checked, and the build loads on Node 20.19 (#34)
 - `recommended` preset as `recommended.json` and a typed export, from one source (#33)
 - CLI output pinned in the default and agent formats, with exit codes (#32)
