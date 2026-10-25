@@ -137,6 +137,6 @@ The message is always one line, because Oxlint gives a plugin's diagnostic no he
 
 The diagnostic is reported where `eslint-plugin-sonarjs` reports it: at a declaration's name or a method's key, and otherwise at the `function` keyword or the `=>`. The [diagnostics spec](../specs/diagnostics.md) has the exact format.
 
-How the hints do on real code, including whether each guard clause lowers the score as promised, is in the [hint evaluation](../evaluation/hints.md).
+How the hints do on real code, including whether each fix reaches the scores it promises, is in the [hint evaluation](../evaluation/hints.md).
 
 The rule has no autofix and no suggestions: lowering a score takes judgement about names and boundaries that a mechanical fix can't make safely.

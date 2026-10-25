@@ -48,7 +48,7 @@ export function shippingCost(order, rates) {
 src/shipping.js:1:17: error complexity(cognitive-complexity): Function 'shippingCost' has cognitive complexity 20, over the max of 15; main contributors: 'if' at line 15 (+4, nested 3 deep), 'if' at line 6 (+3, nested 2 deep), 'for...of' at line 14 (+3, nested 2 deep); fix: invert the 'if' at line 5 into a guard clause that continues to the next iteration early, so its body moves up a level; this one drops to 17.
 ```
 
-On the open-source codebases in the [hint evaluation](docs/evaluation/hints.md), every guard-clause fix reached exactly the score it stated. Fixes that move code into a new function aren't checked that way yet. Once the agent makes the change, the next run scores the function again and suggests the next one.
+On the open-source codebases in the [hint evaluation](docs/evaluation/hints.md), every fix that states a score, whether a guard clause or a move into a new function, reached exactly that score once it was made. Once the agent makes the change, the next run scores the function again and suggests the next one.
 
 ## Install
 
@@ -173,7 +173,7 @@ For now, the hook lints the whole edited file, so it also reports over-max funct
 
 - **Cognitive complexity is a proxy.** Across about 24,000 ratings of 427 snippets, it correlates with how long people take to understand code and how understandable they rate it, with mixed results for whether they understand it correctly ([Muñoz Barón et al., 2020](https://arxiv.org/abs/2007.12520)). It predicts understandability about as well as older measures such as lines of code and cyclomatic complexity, not better ([Lavazza et al., 2023](https://doi.org/10.1016/j.jss.2022.111561)). A function under the max isn't necessarily easy to read, and one over it isn't always worth changing.
 - **Moving code has a cost.** Moving a region into a new function leaves both functions scoring less than the original, but the reader now follows the logic across two of them. A guard clause has no such reading cost, which is one reason the rule suggests one first.
-- **The score is checked, not the behavior.** The hint evaluation checks that each guard-clause fix reaches the score it states and still parses. Whether the change preserves behavior is up to the agent and the project's tests.
+- **The score is checked, not the behavior.** The hint evaluation checks that each fix reaches the scores it states and still parses. Whether the change preserves behavior is up to the agent and the project's tests.
 - **Oxlint's JS plugin API is in alpha.** Oxlint's [JS plugins](https://oxc.rs/docs/guide/usage/linter/js-plugins.html) are under active development and not subject to semver, so an Oxlint upgrade can break the plugin before a fix ships here.
 
 ## Development
