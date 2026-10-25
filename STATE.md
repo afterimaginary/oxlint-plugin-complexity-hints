@@ -1,17 +1,22 @@
 # Project State
 
-**Goal:** An Oxlint plugin that scores cognitive complexity and tells AI coding agents exactly how to fix an over-complex function.
+**Goal:** An Oxlint plugin that keeps code written by coding agents easy for people to review: it scores cognitive complexity, and tells the agent exactly how to fix an over-complex function without reaching outside its change.
 
 ## Where We Are
 
-The repository is scaffolded as a Vite+ library with linting, formatting, git hooks and the `verify` CI workflow. The roadmap is planned as issues across five milestones, and the scope decisions are recorded as ADR-0001 to ADR-0003. `complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md` and reports those over `max` with a single-line message, specified in `docs/specs/diagnostics.md`, that names the main contributors and one fix: a guard clause when one saves points, or else a region to move into a new function, with what stands in the way of moving it. A differential test checks every fixture against `eslint-plugin-sonarjs`, with the whitepaper deviations pinned, and a fuzz test does the same for random programs. JSX conditional rendering scores nothing, and TypeScript-only syntax adds nothing. The repository lints itself with the rule. The README and `docs/rules/cognitive-complexity.md` cover installing, configuring and agent setup. `vp run evaluate-hints` measures the hints on four pinned open-source repositories, with results in `docs/evaluation/hints.md`: every guard-clause hint there lowers the score exactly as promised.
+`complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md`, matching `eslint-plugin-sonarjs` except for the documented whitepaper deviations, which differential and fuzz tests check. Over the max, it reports a single-line message, specified in `docs/specs/diagnostics.md`, that names the main contributors and one fix with the score it reaches: a guard clause when one saves points, or else a region to move into a new function, with what stands in the way of moving it. `vp run evaluate-hints` checks guard-clause hints on four pinned open-source repositories, where every one lowers the score exactly as promised (`docs/evaluation/hints.md`). The README, the rule docs and the `recommended` preset are in place.
+
+The diagnostic text is what sets this plugin apart, so the next milestone, "Reviewable agent changes", makes it hold up: every hint's promise checked, the hint strategy chosen by measurement, and diagnostics scoped to the change under review.
 
 ## Features
 
 - [x] `complexity/cognitive-complexity` rule
 - [x] Single-line, actionable diagnostics (#7)
 - [x] `recommended` preset (#12)
-- [ ] Published to npm (#19)
+- [ ] Every hint kind's promise checked on real code (#40)
+- [ ] Hint strategy chosen by simulation and an agent benchmark (#41, #42, #43)
+- [ ] Scoped checker that reports only what a change is responsible for (#44)
+- [ ] Published to npm as `oxlint-plugin-complexity-hints` (#38, #19)
 
 ## Recently Done
 
@@ -23,17 +28,20 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Up Next
 
-1. Performance benchmark and budget (#17)
-2. Release process and npm publishing with provenance (#19)
-3. Launch checklist: make the repository public (#20)
+1. Rename the package to `oxlint-plugin-complexity-hints` (#38)
+2. Make the README's claims match the evidence, and state the limits (#39)
+3. Check move-hint promises in the hint evaluation (#40)
 
 ## Needs Your Decision
 
-- Release tool and npm publishing setup (#19), when the work reaches it.
-- Launch timing and repository settings (#20).
+- Renaming the GitHub repository (#38).
+- Agent runner, model and token budget for the agent benchmark (#42), when the work reaches it.
+- Command name and flags for the scoped checker (#44), when the work reaches it.
+- Release tool and npm publishing setup (#19), and launch timing (#20).
 
 ## Notes
 
 - Public-facing repository (see `CONTRIBUTING.md`): issues, PRs and commits must be presentable, with no personal identifiers.
-- Work is paused after #16. Resume with #17, the last issue in "Beyond the basics"; after it, #19 and #20 need decisions before they start.
-- Work order: the earliest milestone first, then the lowest-numbered issue whose dependencies (listed in each issue) are closed.
+- Work order: "Reviewable agent changes" (#38 to #46), then "Launch" (#19, #20), then "After launch" (#17, #47). Within a milestone, take the lowest-numbered issue whose dependencies (listed in each issue) are closed.
+- Every hint states the score it reaches, and the evaluation checks that promise (#40). A new hint kind ships only with that check.
+- Agents stay within their change: diagnostics outside it don't block by default (#44), and refactoring goes in its own behavior-preserving commit (#45).
