@@ -17,12 +17,13 @@ vp install
 
 Installing also sets up the git hooks: the pre-commit hook formats and lints staged files, and the pre-push hook runs `vp run ready`.
 
-| Command          | Does                                                                                   |
-| ---------------- | -------------------------------------------------------------------------------------- |
-| `vp run ready`   | Format check, lint, type check and tests. Run it before opening a pull request.        |
-| `vp run verify`  | `ready`, the build, and checks on the built package. CI runs it on every pull request. |
-| `vp test`        | Tests only.                                                                            |
-| `vp check --fix` | Format and apply safe lint fixes.                                                      |
+| Command                 | Does                                                                                                                                         |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vp run ready`          | Format check, lint, type check and tests. Run it before opening a pull request.                                                              |
+| `vp run verify`         | `ready`, the build, and checks on the built package. CI runs it on every pull request.                                                       |
+| `vp run evaluate-hints` | Runs the rule over pinned open-source repositories and rewrites `docs/evaluation/hints.md`. Needs the network; refresh it when hints change. |
+| `vp test`               | Tests only.                                                                                                                                  |
+| `vp check --fix`        | Format and apply safe lint fixes.                                                                                                            |
 
 ## Fuzzing against sonarjs
 
