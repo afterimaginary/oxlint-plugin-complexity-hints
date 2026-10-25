@@ -1,22 +1,29 @@
 import fc from "fast-check";
 
 /**
- * Random JSX modules for the differential fuzz test: functions built from every construct
- * the scoring spec counts or deliberately ignores, nested in each other and in closures.
- * Every program parses as a module, so a disagreement is always about scores.
+ * Random TSX modules for the differential fuzz test: functions built from the constructs
+ * the scoring spec counts or deliberately ignores, nested in each other, in closures and
+ * classes, and in the positions that attribution and nesting depend on (conditions, loop
+ * headers, `case` tests, parameter defaults, field initializers, static blocks). Every
+ * program parses as a module, so a disagreement is always about scores.
  *
- * Functions only ever appear as call arguments, never directly as a ternary branch, which
- * is the one shape where scores knowingly differ from eslint-plugin-sonarjs (ADR-0002) and
- * which the branch-position fixtures pin.
+ * Two shapes are left out. Functions never sit directly in a ternary branch, and programs
+ * are never sloppy-mode scripts: those are the branch-position shapes where scores
+ * knowingly differ from eslint-plugin-sonarjs (ADR-0002), and fixtures pin them instead.
  */
 
-/** Where a statement sits, which decides the jumps it may make. */
+/** Where a statement sits, which decides the jumps and returns it may make. */
 interface Context {
 	loop: boolean;
 	breakable: boolean;
-	/** Labels of the loops around it, in this function. */
-	labels: string[];
+	/** Labels of the loops around it, in this function: `break` and `continue` targets. */
+	loopLabels: string[];
+	/** Labels of the plain blocks around it, in this function: `break` targets only. */
+	blockLabels: string[];
+	/** Whether `for await` is allowed. */
 	async: boolean;
+	/** Whether `return` is allowed: not in a class static block. */
+	returns: boolean;
 }
 
 /** How deep statements and expressions may nest. */
@@ -24,9 +31,11 @@ const DEPTH = 3;
 
 const leaves = fc.constantFrom("a", "b", "c", "x.y", "f()", "f0()", "!a", "items.length", "0");
 
+// Arbitraries are built eagerly and recursively, so each depth (and context) is built once
+// and shared; without the caches the tree grows exponentially with DEPTH.
 const expressions = new Map<number, fc.Arbitrary<string>>();
 
-/** An expression, with logical chains, ternaries, closures and JSX. */
+/** An expression, with logical chains, ternaries, type wrappers, closures and JSX. */
 function expression(depth: number): fc.Arbitrary<string> {
 	const cached = expressions.get(depth);
 
@@ -48,8 +57,11 @@ function expression(depth: number): fc.Arbitrary<string> {
 					fc.tuple(inner, inner).map(([left, right]) => `((${left}) ?? (${right}))`),
 					inner.map((operand) => `(${operand})`),
 					inner.map((operand) => `!(${operand})`),
+					inner.map((operand) => `(${operand})!`),
+					inner.map((operand) => `((${operand}) as boolean)`),
 					fc.tuple(inner, inner, inner).map(([test, yes, no]) => `(${test} ? ${yes} : ${no})`),
 					inner.map((body) => `f(() => ${body})`),
+					inner.map((body) => `f(function named() { return ${body}; })`),
 					inner.map((body) => `a?.b?.(${body})`),
 					inner.map((body) => `<div>{${body}}</div>`),
 					inner.map((body) => `<div hidden={${body}} />`),
@@ -65,11 +77,13 @@ function expression(depth: number): fc.Arbitrary<string> {
 const statements = new Map<string, fc.Arbitrary<string>>();
 
 /** A function body's own context: no loop, label or `switch` reaches into it. */
-const fresh = (async: boolean): Context => ({
+const fresh = (async: boolean, returns = true): Context => ({
 	loop: false,
 	breakable: false,
-	labels: [],
+	loopLabels: [],
+	blockLabels: [],
 	async,
+	returns,
 });
 
 /** A brace-delimited block of up to three statements. */
@@ -79,56 +93,74 @@ function block(context: Context, depth: number): fc.Arbitrary<string> {
 		.map((body) => `{\n${body.join("\n")}\n}`);
 }
 
-/** The statements that end where they start: expressions, returns and jumps. */
+/** The statements that end where they start: expressions, assignments, returns and jumps. */
 function simple(context: Context, depth: number): fc.Arbitrary<string> {
 	const value = expression(depth);
 
 	const jumps = [
 		...(context.breakable ? ["break;"] : []),
 		...(context.loop ? ["continue;"] : []),
-		...context.labels.flatMap((label) => [`break ${label};`, `continue ${label};`]),
+		...context.loopLabels.flatMap((label) => [`break ${label};`, `continue ${label};`]),
+		...context.blockLabels.map((label) => `break ${label};`),
 	];
 
 	return fc.oneof(
 		value.map((it) => `${it};`),
 		value.map((it) => `x = ${it};`),
-		value.map((it) => `x ||= ${it};`),
-		value.map((it) => `x &&= ${it};`),
-		value.map((it) => `return ${it};`),
-		fc.constant("return;"),
+		fc
+			.tuple(fc.constantFrom("&&=", "||=", "??="), value)
+			.map(([operator, it]) => `x ${operator} ${it};`),
+		...(context.returns ? [value.map((it) => `return ${it};`), fc.constant("return;")] : []),
 		...(jumps.length > 0 ? [fc.constantFrom(...jumps)] : []),
 	);
 }
 
-/** A loop of each kind, with `body` as its body. */
+/** A loop of each kind, with expressions in its header and `body` as its body. */
 function loops(context: Context, depth: number, body: fc.Arbitrary<string>): fc.Arbitrary<string> {
-	const test = expression(depth - 1);
+	const value = expression(depth - 1);
 
 	return fc.oneof(
-		body.map((it) => `for (let i = 0; i < n; i++) ${it}`),
-		body.map((it) => `for (const k in o) ${it}`),
-		body.map((it) => `for (const v of items) ${it}`),
-		...(context.async ? [body.map((it) => `for await (const v of items) ${it}`)] : []),
-		fc.tuple(test, body).map(([condition, it]) => `while (${condition}) ${it}`),
-		fc.tuple(body, test).map(([it, condition]) => `do ${it} while (${condition});`),
+		fc
+			.tuple(value, value, body)
+			.map(([init, test, it]) => `for (let i = ${init}; ${test}; i++) ${it}`),
+		fc.tuple(value, body).map(([object, it]) => `for (const k in ${object}) ${it}`),
+		fc.tuple(value, body).map(([iterable, it]) => `for (const v of ${iterable}) ${it}`),
+		...(context.async
+			? [fc.tuple(value, body).map(([iterable, it]) => `for await (const v of ${iterable}) ${it}`)]
+			: []),
+		fc.tuple(value, body).map(([test, it]) => `while (${test}) ${it}`),
+		fc.tuple(body, value).map(([it, test]) => `do ${it} while (${test});`),
 	);
 }
 
-/** A function of each kind, as a statement, with its own fresh context. */
+/** A function or class of each kind, as a statement; each function has a fresh context. */
 function functions(depth: number): fc.Arbitrary<string> {
-	const sync = block(fresh(false), depth - 1);
-	const async = block(fresh(true), depth - 1);
+	const syncBody = block(fresh(false), depth - 1);
+	const asyncBody = block(fresh(true), depth - 1);
+	const staticBody = block(fresh(false, false), depth - 1);
+	const value = expression(depth - 1);
 
 	// Declarations get a block of their own, so their names can never clash.
 	return fc.oneof(
-		sync.map((body) => `{ function inner() ${body} }`),
-		sync.map((body) => `f(() => ${body});`),
-		async.map((body) => `f(async function () ${body});`),
-		sync.map((body) => `(() => ${body})();`),
-		sync.map((body) => `f({ m() ${body} });`),
+		fc.tuple(value, syncBody).map(([init, body]) => `{ function inner(p = ${init}) ${body} }`),
+		fc.tuple(value, syncBody).map(([init, body]) => `f((p = ${init}) => ${body});`),
+		asyncBody.map((body) => `f(async function () ${body});`),
+		syncBody.map((body) => `f(function named() ${body});`),
+		syncBody.map((body) => `(() => ${body})();`),
+		syncBody.map((body) => `f({ m() ${body} });`),
+		syncBody.map((body) => `f({ key: function () ${body} });`),
 		fc
-			.tuple(sync, expression(depth - 1))
-			.map(([body, value]) => `{ class K { m() ${body} field = () => ${value}; } }`),
+			.tuple(syncBody, syncBody)
+			.map(([getter, setter]) => `f({ get p() ${getter}, set p(v) ${setter} });`),
+		fc
+			.tuple(syncBody, syncBody)
+			.map(([constructor, method]) => `{ class K { constructor() ${constructor} m() ${method} } }`),
+		fc
+			.tuple(value, value, staticBody)
+			.map(
+				([field, arrow, initializer]) =>
+					`{ class K { field = ${field}; arrow = () => ${arrow}; static ${initializer} } }`,
+			),
 	);
 }
 
@@ -152,8 +184,11 @@ function statement(context: Context, depth: number): fc.Arbitrary<string> {
 	const test = expression(depth - 1);
 	const here = block(context, depth - 1);
 	const inLoop = { ...context, loop: true, breakable: true };
-	const label = `L${depth}`;
-	const labeled = { ...inLoop, labels: [...context.labels, label] };
+	const loopLabel = `L${depth}`;
+	const blockLabel = `B${depth}`;
+	const labeledLoop = { ...inLoop, loopLabels: [...context.loopLabels, loopLabel] };
+	const labeledBlock = { ...context, blockLabels: [...context.blockLabels, blockLabel] };
+	const inSwitch = statement({ ...context, breakable: true }, depth - 1);
 
 	const arbitrary = fc.oneof(
 		{ weight: 3, arbitrary: simple(context, depth - 1) },
@@ -172,22 +207,24 @@ function statement(context: Context, depth: number): fc.Arbitrary<string> {
 			),
 		fc.tuple(test, simple(context, 0)).map(([condition, then]) => `if (${condition}) ${then}`),
 		loops(context, depth, block(inLoop, depth - 1)),
-		loops(context, depth, block(labeled, depth - 1)).map((loop) => `${label}: ${loop}`),
+		loops(context, depth, block(labeledLoop, depth - 1)).map((loop) => `${loopLabel}: ${loop}`),
+		block(labeledBlock, depth - 1).map((body) => `${blockLabel}: ${body}`),
 		fc
-			.tuple(
-				test,
-				fc.array(statement({ ...context, breakable: true }, depth - 1), { maxLength: 2 }),
-				fc.array(statement({ ...context, breakable: true }, depth - 1), { maxLength: 2 }),
-			)
+			.tuple(test, test, fc.array(inSwitch, { maxLength: 2 }), fc.array(inSwitch, { maxLength: 2 }))
+			// The test goes in a call: in TSX, `case (a):` before a statement parses as the
+			// start of an arrow function with a return type.
 			.map(
-				([discriminant, first, rest]) =>
-					`switch (${discriminant}) {\ncase 1:\n${first.join("\n")}\nbreak;\ndefault:\n${rest.join("\n")}\n}`,
+				([discriminant, label, first, rest]) =>
+					`switch (${discriminant}) {\ncase f(${label}):\n${first.join("\n")}\nbreak;\ndefault:\n${rest.join("\n")}\n}`,
 			),
 		fc
 			.tuple(here, here, fc.boolean())
 			.map(
 				([body, handler, final]) => `try ${body} catch (e) ${handler}${final ? " finally {}" : ""}`,
 			),
+		fc
+			.tuple(here, test, here)
+			.map(([body, init, handler]) => `try ${body} catch ({ m = ${init} }) ${handler}`),
 		here.map((body) => `try ${body} finally {}`),
 		here,
 		functions(depth),
@@ -198,14 +235,30 @@ function statement(context: Context, depth: number): fc.Arbitrary<string> {
 	return arbitrary;
 }
 
-/** A module of one to three top-level functions, as a JSX source file. */
+/** The top-level functions of a module; `NAME` and `DEFAULT` are filled in by position. */
+const units = fc.oneof(
+	fc
+		.tuple(expression(DEPTH - 1), block(fresh(false), DEPTH))
+		.map(([init, body]) => `function NAME(a = ${init}, b) ${body}`),
+	block(fresh(true), DEPTH).map((body) => `export async function NAME() ${body}`),
+	block(fresh(false), DEPTH).map((body) => `DEFAULT () ${body}`),
+	block(fresh(false), DEPTH).map((body) => `f(() => ${body});`),
+);
+
+/** A module of one to three top-level functions, at most one of them the default export. */
 export const programs: fc.Arbitrary<string> = fc
-	.array(
-		fc.oneof(
-			block(fresh(false), DEPTH).map((body) => `function NAME(a, b) ${body}`),
-			block(fresh(true), DEPTH).map((body) => `export async function NAME() ${body}`),
-			block(fresh(false), DEPTH).map((body) => `f(() => ${body});`),
-		),
-		{ minLength: 1, maxLength: 3 },
-	)
-	.map((units) => `${units.map((unit, index) => unit.replace("NAME", `f${index}`)).join("\n")}\n`);
+	.array(units, { minLength: 1, maxLength: 3 })
+	.map((list) => {
+		let exported = false;
+
+		const named = list.map((unit, index) => {
+			const isDefault = unit.startsWith("DEFAULT");
+			const keyword = isDefault && !exported ? "export default function" : `function f${index}`;
+
+			exported ||= isDefault;
+
+			return unit.replace("NAME", `f${index}`).replace("DEFAULT", keyword);
+		});
+
+		return `${named.join("\n")}\n`;
+	});

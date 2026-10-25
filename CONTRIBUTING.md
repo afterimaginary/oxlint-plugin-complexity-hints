@@ -32,7 +32,7 @@ Installing also sets up the git hooks: the pre-commit hook formats and lints sta
 FUZZ_SEED=7 FUZZ_RUNS=20000 vp test tests/fuzz.test.ts
 ```
 
-A failure prints the seed and the shrunk program. Add that program to a fixture in `tests/fixtures/`, so the oracle test keeps it, then fix the rule. If sonarjs is the one that's wrong, pin the whitepaper total instead and add the case to the deviations in `docs/specs/scoring.md`.
+A failure prints the seed, a `path` and the shrunk program. Add that program to a fixture in `tests/fixtures/`, so the oracle test keeps it, then fix the rule. If sonarjs is the one that's wrong, pin the whitepaper total instead and add the case to the deviations in `docs/specs/scoring.md`. If the program doesn't parse, the generator is at fault: fix `tests/programs.ts`.
 
 ## Pull requests
 
