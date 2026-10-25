@@ -1,10 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { extname, join } from "node:path";
-import tsParser from "@typescript-eslint/parser";
-import { Linter } from "eslint";
-import sonarjs from "eslint-plugin-sonarjs";
+import { join } from "node:path";
 import { describe, expect, test } from "vite-plus/test";
 import { reports, rule, tester } from "./helpers.ts";
+import { oracle } from "./sonarjs.ts";
 
 const fixtures = join(import.meta.dirname, "fixtures");
 
@@ -15,39 +13,6 @@ const fixtures = join(import.meta.dirname, "fixtures");
  * where eslint-plugin-sonarjs is knowingly wrong.
  */
 const PINNED = /^\/\/ @expect ([^\n(]+)/;
-
-const linter = new Linter();
-
-/** Every report eslint-plugin-sonarjs makes at threshold 0, as `line:column=total`. */
-function oracle(file: string, code: string): string[] {
-	const extension = extname(file);
-
-	const messages = linter.verify(
-		code,
-		{
-			files: ["**/*.{js,cjs,jsx,ts,tsx}"],
-			languageOptions: {
-				parser: tsParser,
-				sourceType: extension === ".cjs" ? "script" : "module",
-				parserOptions: { ecmaFeatures: { jsx: extension === ".jsx" || extension === ".tsx" } },
-			},
-			plugins: { sonarjs },
-			rules: { "sonarjs/cognitive-complexity": ["error", 0] },
-		},
-		file,
-	);
-
-	return messages.map((message) => {
-		const total = /from (\d+) to/.exec(message.message)?.[1];
-
-		// A parse error or config miss must fail the fixture, not shrink it to nothing.
-		if (message.ruleId !== "sonarjs/cognitive-complexity" || !total) {
-			throw new Error(`${file}:${message.line}:${message.column}: ${message.message}`);
-		}
-
-		return `${message.line}:${message.column}=${total}`;
-	});
-}
 
 /** `line:column` of a `line:column=total` entry. */
 const position = (entry: string) => entry.split("=")[0];

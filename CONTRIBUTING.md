@@ -24,6 +24,16 @@ Installing also sets up the git hooks: the pre-commit hook formats and lints sta
 | `vp test`        | Tests only.                                                                            |
 | `vp check --fix` | Format and apply safe lint fixes.                                                      |
 
+## Fuzzing against sonarjs
+
+`tests/fuzz.test.ts` compares this rule with `eslint-plugin-sonarjs` on random programs. It runs a fixed set in `verify`; to search further, change the seed and the count:
+
+```bash
+FUZZ_SEED=7 FUZZ_RUNS=20000 vp test tests/fuzz.test.ts
+```
+
+A failure prints the seed and the shrunk program. Add that program to a fixture in `tests/fixtures/`, so the oracle test keeps it, then fix the rule. If sonarjs is the one that's wrong, pin the whitepaper total instead and add the case to the deviations in `docs/specs/scoring.md`.
+
 ## Pull requests
 
 - Keep each pull request to one change, and link the issue it resolves.
