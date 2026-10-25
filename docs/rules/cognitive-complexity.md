@@ -135,6 +135,6 @@ Function 'findUser' has cognitive complexity 8, over the max of 5; main contribu
 
 The message is always one line, because Oxlint gives a plugin's diagnostic no help text and its `agent` format prints one line per diagnostic. In `.vue`, `.svelte` and `.astro` files, its line numbers count from the top of the file, like the diagnostic's location.
 
-The diagnostic is reported at the function's name, or at its `function` keyword or `=>` when it has none, the same place as `eslint-plugin-sonarjs`. The [diagnostics spec](../specs/diagnostics.md) has the exact format.
+The diagnostic is reported where `eslint-plugin-sonarjs` reports it: at a declaration's name or a method's key, and otherwise at the `function` keyword or the `=>`. The [diagnostics spec](../specs/diagnostics.md) has the exact format.
 
 The rule has no autofix and no suggestions: lowering a score takes judgement about names and boundaries that a mechanical fix can't make safely.

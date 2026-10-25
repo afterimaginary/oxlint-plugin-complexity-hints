@@ -58,7 +58,7 @@ Requires Oxlint 1.83.0 or later, and Node.js `^20.19.0 || >=22.12.0`.
 npm install --save-dev oxlint complexity-plugin-oxlint
 ```
 
-With [Vite+](https://viteplus.dev), which bundles Oxlint:
+With [Vite+](https://viteplus.dev), which bundles Oxlint (`vp toolchain oxlint` shows its version):
 
 ```bash
 vp add -D complexity-plugin-oxlint
@@ -154,7 +154,7 @@ What counts toward the score, how it differs from the whitepaper, why there is n
 }
 ```
 
-It needs [`jq`](https://jqlang.org). Files Oxlint doesn't lint, such as Markdown, pass through. Other agents with an after-edit hook can run the same `oxlint` command.
+It needs [`jq`](https://jqlang.org). Files Oxlint doesn't lint, such as Markdown, pass through. In a Vite+ project, run `vp lint` in place of `npx oxlint`, with the same flags: the `oxlint` binary Vite+ installs is for editors only, and `vp lint` is what reads the `lint` block of `vite.config.ts`. Other agents with an after-edit hook can run the same command.
 
 ## Development
 
