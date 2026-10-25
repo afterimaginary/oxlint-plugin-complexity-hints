@@ -350,24 +350,24 @@ function fallbackText({ kind, line }: Contributor): string {
 }
 
 /**
- * One concrete change: a guard clause when one saves points, or else move the region
- * that best splits the score, so that both functions end up lower than this one is
- * now, saying what stands in the way. See "Fix" in docs/specs/diagnostics.md.
+ * How a fix is chosen when a guard clause and a move both help. The rule uses "guard
+ * first"; the others exist to be measured against it (see docs/evaluation/strategies.md).
+ *
+ * - "guard first": the guard.
+ * - "largest saving": whichever leaves the lower highest score; a tie goes to the guard,
+ *   which moves no code.
+ * - "guard if enough": the guard when it brings the function to the max, or else as
+ *   "largest saving".
  */
-export function suggestFix(
+export type Strategy = "guard first" | "largest saving" | "guard if enough";
+
+/** The best region to move, if any leaves both functions lower than this one is now. */
+function bestMove(
 	unit: FunctionUnit,
 	increments: readonly Increment[],
 	total: number,
-	heaviest: Contributor,
 	scopeManager: ScopeManager,
-): string {
-	// A guard removes complexity rather than moving it, so it comes first.
-	const guard = findGuardClause(increments);
-
-	if (guard) {
-		return guardText(guard, increments, total);
-	}
-
+): Option | undefined {
 	const scopes = unitScopes(unit, scopeManager);
 
 	const options = [
@@ -377,7 +377,36 @@ export function suggestFix(
 		...runOptions(unit, increments, total, scopes),
 	];
 
-	const [best] = options.filter((candidate) => candidate.score < total).sort(compare);
+	return options.filter((candidate) => candidate.score < total).sort(compare)[0];
+}
+
+/**
+ * One concrete change: a guard clause when one saves points, or else move the region
+ * that best splits the score, so that both functions end up lower than this one is
+ * now, saying what stands in the way. See "Fix" in docs/specs/diagnostics.md. When both
+ * help, `strategy` picks one.
+ */
+export function suggestFix(
+	unit: FunctionUnit,
+	increments: readonly Increment[],
+	{ total, max }: { total: number; max: number },
+	heaviest: Contributor,
+	scopeManager: ScopeManager,
+	strategy: Strategy = "guard first",
+): string {
+	const guard = findGuardClause(increments);
+	// What this one scores once the guard clause is in.
+	const guarded = guard ? total - guard.saving : Infinity;
+
+	if (guard && (strategy === "guard first" || (strategy === "guard if enough" && guarded <= max))) {
+		return guardText(guard, increments, total);
+	}
+
+	const best = bestMove(unit, increments, total, scopeManager);
+
+	if (guard && !(best && best.score < guarded)) {
+		return guardText(guard, increments, total);
+	}
 
 	return best ? best.region.text(best.remaining, best.moved, best.clauses) : fallbackText(heaviest);
 }

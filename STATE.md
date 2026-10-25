@@ -4,7 +4,7 @@
 
 ## Where We Are
 
-`complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md`, matching `eslint-plugin-sonarjs` except for the documented whitepaper deviations, which differential and fuzz tests check. Over the max, it reports a single-line message, specified in `docs/specs/diagnostics.md`, that names the main contributors and one fix with the score it reaches: a guard clause when one saves points, or else a region to move into a new function, with what stands in the way of moving it. Every hint that states a score is checked against it: `tests/hint-promises.test.ts` applies each fix in the CLI fixtures, and `vp run evaluate-hints` applies all 318 on four pinned open-source repositories, where every one reaches exactly the scores it promised (`docs/evaluation/hints.md`). The README, the rule docs and the `recommended` preset are in place.
+`complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md`, matching `eslint-plugin-sonarjs` except for the documented whitepaper deviations, which differential and fuzz tests check. Over the max, it reports a single-line message, specified in `docs/specs/diagnostics.md`, that names the main contributors and one fix with the score it reaches: a guard clause when one saves points, or else a region to move into a new function, with what stands in the way of moving it. Every hint that states a score is checked against it: `tests/hint-promises.test.ts` applies each fix in the CLI fixtures, and `vp run evaluate-hints` applies all 318 on four pinned open-source repositories, where every one reaches exactly the scores it promised (`docs/evaluation/hints.md`). `vp run simulate-hints` plays the lint loop on the same code to compare how the rule chooses between a guard clause and a move (`docs/evaluation/strategies.md`). "Guard if enough", a guard clause only when it alone reaches the max, reaches the max in fewer lint rounds than today's "guard first" (89 against 144 where they differ), at the cost of a few more extracted functions, and is the candidate for #42 and #43. The README, the rule docs and the `recommended` preset are in place.
 
 The diagnostic text is what sets this plugin apart, so the next milestone, "Reviewable agent changes", makes it hold up: every hint's promise checked, the hint strategy chosen by measurement, and diagnostics scoped to the change under review.
 
@@ -20,17 +20,17 @@ The diagnostic text is what sets this plugin apart, so the next milestone, "Revi
 
 ## Recently Done
 
+- Hint strategies compared by simulating the lint loop; "guard if enough" recommended (#41)
 - Every move and helper hint checked against its promise, in `verify` and on real code (#40)
 - README claims matched to the evidence, with a Limits section, and the Oxlint-only scope recorded as ADR-0004 (#39)
 - Renamed to `oxlint-plugin-complexity-hints`, with the plugin alias documented (#38)
 - Fix hints evaluated on pinned open-source repositories (#37)
-- Fuzzed against `eslint-plugin-sonarjs` on random programs (#36)
 
 ## Up Next
 
-1. Simulate the lint loop to compare hint strategies (#41)
-2. Benchmark hint strategies with a coding agent in the loop (#42)
-3. Ship the hint strategy the evaluations support (#43)
+1. Benchmark hint strategies with a coding agent in the loop (#42): guard first against guard if enough, and the "how far over the max" wording carried over from #41
+2. Ship the hint strategy the evaluations support (#43)
+3. Scoped checker that reports only what a change is responsible for (#44)
 
 ## Needs Your Decision
 

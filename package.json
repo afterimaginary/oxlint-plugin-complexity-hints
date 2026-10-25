@@ -40,7 +40,8 @@
 		"prepare": "vp config",
 		"ready": "vp check && vp test",
 		"verify": "vp run ready && vp run build && node scripts/check-package.mjs && node scripts/smoke-dist.mjs",
-		"evaluate-hints": "node scripts/evaluate-hints.mjs && vp fmt docs/evaluation/hints.md"
+		"evaluate-hints": "node scripts/evaluate-hints.mjs && vp fmt docs/evaluation/hints.md",
+		"simulate-hints": "node scripts/simulate-hints.mjs && vp fmt docs/evaluation/strategies.md"
 	},
 	"devDependencies": {
 		"@oxlint/plugins": "1.83.0",

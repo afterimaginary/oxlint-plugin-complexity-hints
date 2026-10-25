@@ -1,144 +1,17 @@
-// Runs the rule over pinned open-source repositories, records every fix hint, and applies
-// each one that makes a promise (see scripts/apply-hints.ts) to check that the scores
-// drop to what it states. Writes the summary to docs/evaluation/hints.md. Run by hand
-// with `vp run evaluate-hints`; it is not part of `verify`, since it needs the network and
-// its numbers move with the rule.
-//
-// The repositories are fetched at their pinned commits into HINT_EVAL_DIR, or a folder in
-// the system temp directory, never into this repository.
-import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+// Runs the rule over pinned open-source repositories (see scripts/eval-repos.mjs), records
+// every fix hint, and applies each one that makes a promise (see scripts/apply-hints.ts) to
+// check that the scores drop to what it states. Writes the summary to
+// docs/evaluation/hints.md. Run by hand with `vp run evaluate-hints`; it is not part of
+// `verify`, since it needs the network and its numbers move with the rule.
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { RULE, applyAll, hasObstacle, kindOf, scoreOf } from "./apply-hints.ts";
-
-const root = fileURLToPath(new URL("..", import.meta.url));
-const cache = process.env.HINT_EVAL_DIR ?? join(tmpdir(), "complexity-hint-eval");
-
-const repositories = [
-	{
-		name: "ESLint",
-		url: "https://github.com/eslint/eslint",
-		tag: "v9.0.0",
-		commit: "e0cbc50179adac1670f4e0bd9093387a51f4f42a",
-		paths: ["lib"],
-	},
-	{
-		name: "Prettier",
-		url: "https://github.com/prettier/prettier",
-		tag: "3.0.0",
-		commit: "186e0966b010d57a0be1185494ce772becf5dac4",
-		paths: ["src"],
-	},
-	{
-		name: "Vite",
-		url: "https://github.com/vitejs/vite",
-		tag: "v6.0.0",
-		commit: "814120f2ad387ca3d1e16c7dd403b04ca4b97f75",
-		paths: ["packages/vite/src"],
-	},
-	{
-		name: "Excalidraw",
-		url: "https://github.com/excalidraw/excalidraw",
-		tag: "v0.17.0",
-		commit: "ddb75850573f6fef9a0786ced32ae63ab913f0e0",
-		paths: ["src"],
-	},
-];
-
-// Vite+ sets `VP_VERSION`, which makes Oxlint read configs as Vite+ configs; `CI` and
-// `FORCE_COLOR` add colors. None of them belong in a plain Oxlint run.
-const { VP_VERSION: _vp, CI: _ci, FORCE_COLOR: _color, ...env } = process.env;
-
-function run(command, args, cwd) {
-	const result = spawnSync(command, args, {
-		cwd,
-		encoding: "utf8",
-		env,
-		maxBuffer: 1 << 28,
-	});
-
-	if (result.error) {
-		throw result.error;
-	}
-
-	return result;
-}
-
-/** The repository's checkout at its pinned commit, fetched if it isn't there yet. */
-function checkout(repository) {
-	const dir = join(cache, repository.name.toLowerCase());
-	const head = existsSync(dir) ? run("git", ["rev-parse", "HEAD"], dir).stdout.trim() : "";
-
-	if (head === repository.commit) {
-		// A run that was stopped can leave a rewritten copy behind, which would be linted.
-		run("git", ["clean", "-fdq"], dir);
-
-		return dir;
-	}
-
-	rmSync(dir, { recursive: true, force: true });
-
-	mkdirSync(dir, { recursive: true });
-
-	run("git", ["init", "-q"], dir);
-
-	for (const args of [
-		["fetch", "-q", "--depth", "1", repository.url, repository.commit],
-		["-c", "advice.detachedHead=false", "checkout", "-q", "FETCH_HEAD"],
-	]) {
-		const step = run("git", args, dir);
-
-		if (step.status !== 0) {
-			throw new Error(`Couldn't check out ${repository.name}: ${step.stderr}`);
-		}
-	}
-
-	return dir;
-}
-
-const configs = new Map();
-
-/** A config with the rule from this repository's source at `max`, and nothing else on. */
-function config(max) {
-	if (!configs.has(max)) {
-		const file = join(cache, `oxlintrc-${max}.json`);
-
-		writeFileSync(
-			file,
-			JSON.stringify({
-				jsPlugins: [{ name: "complexity", specifier: join(root, "src/index.ts") }],
-				categories: { correctness: "off" },
-				rules: { "complexity/cognitive-complexity": ["error", max] },
-			}),
-		);
-
-		configs.set(max, file);
-	}
-
-	return configs.get(max);
-}
-
-/** Oxlint's JSON report for `paths` in `dir`. */
-function lint(dir, paths, max) {
-	const result = run(
-		join(root, "node_modules/.bin/oxlint"),
-		["-c", config(max), "--format", "json", ...paths],
-		dir,
-	);
-
-	if (!result.stdout.startsWith("{")) {
-		throw new Error(result.stdout + result.stderr);
-	}
-
-	return JSON.parse(result.stdout);
-}
+import { checkout, lint, repositories, root } from "./eval-repos.mjs";
 
 /** Everything the summary needs about one repository. */
 function evaluate(repository) {
 	const dir = checkout(repository);
-	const report = lint(dir, repository.paths, 15);
+	const report = lint(dir, repository.paths, { max: 15 });
 
 	// Oxlint's order varies between runs, so sort for a stable summary.
 	const diagnostics = report.diagnostics
@@ -151,7 +24,7 @@ function evaluate(repository) {
 	const kinds = Map.groupBy(diagnostics, ({ message }) => kindOf(message));
 
 	const applied = applyAll(dir, diagnostics, (paths) => {
-		const copies = lint(dir, paths, 0);
+		const copies = lint(dir, paths, { max: 0 });
 
 		if (copies.number_of_files !== paths.length) {
 			throw new Error(`Oxlint linted ${copies.number_of_files} of ${paths.length} copies`);
@@ -353,8 +226,6 @@ function summary(results) {
 		...results.flatMap(listing),
 	].join("\n");
 }
-
-mkdirSync(cache, { recursive: true });
 
 const results = repositories.map(evaluate);
 const output = join(root, "docs/evaluation/hints.md");
