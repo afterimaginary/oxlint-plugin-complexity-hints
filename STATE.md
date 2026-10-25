@@ -15,7 +15,7 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
-- Fuzzed against `eslint-plugin-sonarjs` on random programs (#PR)
+- Fuzzed against `eslint-plugin-sonarjs` on random programs (#36)
 - README and rule docs for users, with their examples checked against the rule (#35)
 - Package contents checked, and the build loads on Node 20.19 (#34)
 - `recommended` preset as `recommended.json` and a typed export, from one source (#33)
