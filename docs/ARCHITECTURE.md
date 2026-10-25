@@ -4,14 +4,14 @@ oxlint-plugin-complexity-hints is an Oxlint JS plugin, published as an ES module
 
 ## Layout
 
-| Path               | Contents                                                                                                                        |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `src/`             | Plugin source. Imports the plugin API from `@oxlint/plugins` so the package works in plain Oxlint.                              |
-| `tests/`           | Vitest suites, run with `vp test`.                                                                                              |
-| `docs/rules/`      | User docs for each rule, linked from the README. The specs in `docs/specs/` are the exact rules.                                |
-| `scripts/`         | Checks on the built package, run by `verify`: its contents and a load on the Node floor. Also the hint evaluation, run by hand. |
-| `dist/`            | Build output from `vp pack`. Not committed.                                                                                     |
-| `recommended.json` | The preset for `.oxlintrc.json`, written by `vp pack`. Not committed.                                                           |
+| Path               | Contents                                                                                                                                                    |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/`             | Plugin source. Imports the plugin API from `@oxlint/plugins` so the package works in plain Oxlint.                                                          |
+| `tests/`           | Vitest suites, run with `vp test`.                                                                                                                          |
+| `docs/rules/`      | User docs for each rule, linked from the README. The specs in `docs/specs/` are the exact rules.                                                            |
+| `scripts/`         | Checks on the built package, run by `verify`: its contents and a load on the Node floor. Also the hint evaluation and the strategy simulation, run by hand. |
+| `dist/`            | Build output from `vp pack`. Not committed.                                                                                                                 |
+| `recommended.json` | The preset for `.oxlintrc.json`, written by `vp pack`. Not committed.                                                                                       |
 
 ## Plugin
 
@@ -25,17 +25,17 @@ oxlint-plugin-complexity-hints is an Oxlint JS plugin, published as an ES module
 
 The scoring rules are specified in [`docs/specs/scoring.md`](specs/scoring.md), and the message in [`docs/specs/diagnostics.md`](specs/diagnostics.md). The code splits them like this:
 
-| File                                | Responsibility                                                                                                                                                                |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/scoring.ts`                    | Which nodes are function units, which unit an increment belongs to and at what nesting level, how many `&&` runs a chain has, and which chains are JSX conditional rendering. |
-| `src/report-location.ts`            | Which token a unit's diagnostic points at.                                                                                                                                    |
-| `src/script-block.ts`               | Where an embedded script block starts in its file, and moving the message's positions from the block to the file.                                                             |
-| `src/describe-function.ts`          | How the message names a unit.                                                                                                                                                 |
-| `src/contributors.ts`               | Grouping and ranking a unit's increments for the message.                                                                                                                     |
-| `src/guard-clause.ts`               | Which `if` can become a guard clause without skipping anything, and how many points that saves.                                                                               |
-| `src/hint.ts`                       | The one suggested fix: a guard clause, or else which region to move into a new function.                                                                                      |
-| `src/obstacles.ts`                  | What stands in the way of moving a region unchanged, the workaround and what it costs, from a walk of the region and Oxlint's scope manager.                                  |
-| `src/rules/cognitive-complexity.ts` | The Oxlint wiring: options, one visitor per counted construct, and the report when a unit's `:exit` visitor runs.                                                             |
+| File                                | Responsibility                                                                                                                                                                                            |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/scoring.ts`                    | Which nodes are function units, which unit an increment belongs to and at what nesting level, how many `&&` runs a chain has, and which chains are JSX conditional rendering.                             |
+| `src/report-location.ts`            | Which token a unit's diagnostic points at.                                                                                                                                                                |
+| `src/script-block.ts`               | Where an embedded script block starts in its file, and moving the message's positions from the block to the file.                                                                                         |
+| `src/describe-function.ts`          | How the message names a unit.                                                                                                                                                                             |
+| `src/contributors.ts`               | Grouping and ranking a unit's increments for the message.                                                                                                                                                 |
+| `src/guard-clause.ts`               | Which `if` can become a guard clause without skipping anything, and how many points that saves.                                                                                                           |
+| `src/hint.ts`                       | The one suggested fix: a guard clause, or else which region to move into a new function. When both help, a strategy picks; the rule uses "guard first", and the others exist for the strategy simulation. |
+| `src/obstacles.ts`                  | What stands in the way of moving a region unchanged, the workaround and what it costs, from a walk of the region and Oxlint's scope manager.                                                              |
+| `src/rules/cognitive-complexity.ts` | The Oxlint wiring: options, one visitor per counted construct, and the report when a unit's `:exit` visitor runs. `createRule` builds it with a given strategy.                                           |
 
 Attribution and nesting are computed from each increment's `parent` chain up to its nearest function unit, so no state carries from one unit to another. Scores for a file live in a map that is reset in the `before` hook.
 
@@ -59,5 +59,7 @@ Development uses [Vite+](https://viteplus.dev): `vp check` for formatting, linti
 `verify` ends with two checks on the built package. `scripts/check-package.mjs` compares what `pnpm pack` would publish with a fixed list of files. `scripts/smoke-dist.mjs` loads `dist/` with plain `node`, checks that the plugin registers `cognitive-complexity` and that both forms of the preset agree, then runs the built rule through Oxlint on the same Node. CI runs the smoke test again on Node 20.19.0, the floor of `engines.node`, which matches Oxlint's own, and the script fails if it finds a different Node. Development and CI otherwise use Node 24, set by `.node-version`, so `engines.node` stays a consumer-facing range.
 
 `vp run evaluate-hints` (`scripts/evaluate-hints.mjs`) measures the fix hints on real code, outside `verify`. It fetches pinned commits of a few open-source repositories into a temp folder, lints them with the rule from source, and applies every hint that promises a score to a copy of its file, to check the new scores against the promised ones. It writes the results to `docs/evaluation/hints.md`. The rewrites live in `scripts/apply-hints.ts`: a guard clause, or a move with the workaround each obstacle names, where the moved code becomes a function declared inside the reported function so the rule scores it on its own.
+
+`vp run simulate-hints` (`scripts/simulate-hints.mjs`) plays the lint loop on the same repositories, also outside `verify`, to compare hint strategies. It follows each over-max function in a copy of its file of its own, applies its hints with the same rewrites until the function and everything moved out of it are at or under the max, and checks each step against its promise. It runs once per strategy, with the rules `scripts/strategy-plugin.ts` builds, and writes the comparison to `docs/evaluation/strategies.md`. Both scripts take the pinned repositories, checkouts and lint runs from `scripts/eval-repos.mjs`.
 
 Two TypeScript versions are installed side by side. `typescript` is TypeScript 6 (`@typescript/typescript6`), because `@typescript-eslint/parser` needs a TypeScript with a JavaScript API, and TypeScript 7 has none. TypeScript 7 is installed as `@typescript/native-preview`, where `vp pack` looks for the native compiler that generates declarations.

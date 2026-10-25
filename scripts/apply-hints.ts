@@ -39,8 +39,11 @@ interface Promised {
 	moved?: number;
 }
 
-/** A file's text with a hint applied, or why it couldn't be. */
-type Change = { text: string } | { outcome: string };
+/**
+ * A file's text with a hint applied, or why it couldn't be. `lines` counts the lines the change moves: into a new function, or up a level out of a
+ * guard clause's body.
+ */
+type Change = { text: string; lines: number } | { outcome: string };
 
 const NOT_FOUND = { outcome: "not found" };
 
@@ -55,10 +58,8 @@ interface Checked {
 
 export const RULE = "complexity(cognitive-complexity)";
 
-/** The name the rewrite gives a moved region's new function. */
+/** The name the rewrite gives a moved region's new function, unless told another. */
 const MOVED = "__hintEvalMoved";
-
-const RESULT = "__hintEvalResult";
 
 const GUARD =
 	/fix: invert the 'if' at line (\d+)(?:, column (\d+))? into a guard clause that (returns|continues)[^;]*; this one drops to (\d+)\.$/;
@@ -220,6 +221,10 @@ function invert(source: string, statement: Node, exit: string): string {
 	return applyEdits(source, [{ start: statement.range[0], end: statement.range[1], text: braced }]);
 }
 
+/** The lines inside a block, or the statement itself. */
+const bodyLines = ({ type, loc }: Node): number =>
+	loc.end.line - loc.start.line + (type === "BlockStatement" ? -1 : 1);
+
 function rewriteGuard(
 	source: string,
 	file: string,
@@ -243,7 +248,7 @@ function rewriteGuard(
 	}
 
 	return exitOf(statement) === exit
-		? { text: invert(source, statement, exit!) }
+		? { text: invert(source, statement, exit!), lines: bodyLines(statement["consequent"] as Node) }
 		: { outcome: "wrong exit" };
 }
 
@@ -564,8 +569,9 @@ function flowEdits(region: Region, plan: Plan, range: [number, number]): Edit[] 
 }
 
 /** The statement that takes the region's place. */
-function callSite(plan: Plan): string {
-	const call = `${plan.yields ? "yield* " : ""}${plan.awaits ? "await " : ""}${MOVED}()`;
+function callSite(plan: Plan, name: string): string {
+	const call = `${plan.yields ? "yield* " : ""}${plan.awaits ? "await " : ""}${name}()`;
+	const result = `${name}Result`;
 	const names = plan.handedBack;
 
 	// Handed-back names combine only with a plain final return; see "Obstacles" in the spec.
@@ -588,7 +594,7 @@ function callSite(plan: Plan): string {
 			return `${statement}\nreturn;`;
 
 		case "some value":
-			return `const ${RESULT} = ${call};\nif (${RESULT} !== undefined) return ${RESULT};`;
+			return `const ${result} = ${call};\nif (${result} !== undefined) return ${result};`;
 
 		case "some bare":
 			return `if (${call}) return;`;
@@ -598,12 +604,12 @@ function callSite(plan: Plan): string {
 	}
 }
 
-function declaration(plan: Plan, body: string): string {
+function declaration(plan: Plan, body: string, name: string): string {
 	const names = plan.handedBack;
 
 	const handBack = names.length === 0 ? "" : `\nreturn ${handBackOf(names)};`;
 
-	return `\n${plan.awaits ? "async " : ""}function${plan.yields ? "*" : ""} ${MOVED}() {\n${body}${handBack}\n}\n`;
+	return `\n${plan.awaits ? "async " : ""}function${plan.yields ? "*" : ""} ${name}() {\n${body}${handBack}\n}\n`;
 }
 
 /**
@@ -632,7 +638,13 @@ function declareEdits(region: Region, plan: Plan): Edit[] | undefined {
 	);
 }
 
-function rewriteMove(source: string, file: string, match: RegExpExecArray, offset: number): Change {
+function rewriteMove(
+	source: string,
+	file: string,
+	match: RegExpExecArray,
+	offset: number,
+	name: string,
+): Change {
 	const plan = planOf(match[5]!);
 
 	if (!plan) {
@@ -663,13 +675,14 @@ function rewriteMove(source: string, file: string, match: RegExpExecArray, offse
 	}
 
 	const body = applyEdits(source.slice(...range), flowEdits(region, plan, range), range[0]);
-	const site = region.inList ? callSite(plan) : `{\n${callSite(plan)}\n}`;
+	const site = region.inList ? callSite(plan, name) : `{\n${callSite(plan, name)}\n}`;
 	const unit = enclosingFunction(region.statements[0]!)!["body"] as Node;
 
 	return {
+		lines: region.statements.at(-1)!.loc.end.line - region.statements[0]!.loc.start.line + 1,
 		text: applyEdits(source, [
 			{ start: range[0], end: range[1], text: site },
-			{ start: unit.range[1] - 1, end: unit.range[1] - 1, text: declaration(plan, body) },
+			{ start: unit.range[1] - 1, end: unit.range[1] - 1, text: declaration(plan, body, name) },
 			...declare,
 		]),
 	};
@@ -680,6 +693,7 @@ function rewriteHelper(
 	file: string,
 	match: RegExpExecArray,
 	offset: number,
+	name: string,
 ): Change {
 	const [, line, column, clauses] = match;
 	const plan = planOf(clauses!);
@@ -701,13 +715,15 @@ function rewriteHelper(
 		return NOT_FOUND;
 	}
 
-	const call = `(${plan.yields ? "yield* " : ""}${plan.awaits ? "await " : ""}${MOVED}())`;
-	const helper = declaration(plan, `return (${source.slice(...ternary.range)});`);
+	const call = `(${plan.yields ? "yield* " : ""}${plan.awaits ? "await " : ""}${name}())`;
+	const helper = declaration(plan, `return (${source.slice(...ternary.range)});`, name);
 	const body = unit["body"] as Node;
 	const replaced = { start: ternary.range[0], end: ternary.range[1], text: call };
+	const lines = ternary.loc.end.line - ternary.loc.start.line + 1;
 
 	if (body.type === "BlockStatement") {
 		return {
+			lines,
 			text: applyEdits(source, [
 				replaced,
 				{ start: body.range[1] - 1, end: body.range[1] - 1, text: helper },
@@ -722,6 +738,7 @@ function rewriteHelper(
 	const expression = applyEdits(source.slice(start, end), [replaced], start);
 
 	return {
+		lines,
 		text: applyEdits(source, [{ start, end, text: ` {\nreturn (${expression});${helper}}` }]),
 	};
 }
@@ -746,8 +763,11 @@ function reportOffset(source: string, diagnostic: Diagnostic): number {
 	);
 }
 
-/** `diagnostic`'s hint applied to `source`, its file's text, unless it promises no score. */
-function rewrite(source: string, diagnostic: Diagnostic): Rewrite | undefined {
+/**
+ * `diagnostic`'s hint applied to `source`, its file's text, unless it promises no score.
+ * A move or helper's new function is called `name`.
+ */
+export function rewrite(source: string, diagnostic: Diagnostic, name = MOVED): Rewrite | undefined {
 	const { message, filename } = diagnostic;
 	const offset = reportOffset(source, diagnostic);
 	const before = scoreOf(message);
@@ -773,7 +793,7 @@ function rewrite(source: string, diagnostic: Diagnostic): Rewrite | undefined {
 			kind: "move",
 			before,
 			promised,
-			...rewriteMove(source, filename, move, offset),
+			...rewriteMove(source, filename, move, offset, name),
 		};
 	}
 
@@ -786,7 +806,7 @@ function rewrite(source: string, diagnostic: Diagnostic): Rewrite | undefined {
 			kind: "helper",
 			before,
 			promised,
-			...rewriteHelper(source, filename, helper, offset),
+			...rewriteHelper(source, filename, helper, offset, name),
 		};
 	}
 
@@ -801,17 +821,19 @@ export interface Report {
 /**
  * How the rewritten copy scores, from `diagnostics`: the rule's reports for the copy, at
  * max 0, so every function that scores at all is reported. The function's report sits at
- * its name, keyword or `=>`, before the body, so the rewrite never moves it.
+ * its name, keyword or `=>`, before the body, so the rewrite never moves it. `rule` is
+ * the rule's code in the report, and `name` the one the rewrite gave a new function.
  */
-function check(
+export function check(
 	diagnostics: readonly Diagnostic[],
 	diagnostic: Diagnostic,
 	rewritten: Rewrite,
+	{ rule = RULE, name = MOVED } = {},
 ): Checked {
 	const { before, promised } = rewritten;
 
 	// With every other rule off, anything else is a parse error, such as a name clash.
-	if (diagnostics.some(({ code }) => code !== RULE)) {
+	if (diagnostics.some(({ code }) => code !== rule)) {
 		return { outcome: "doesn't parse" };
 	}
 
@@ -826,7 +848,7 @@ function check(
 	}
 
 	const after = same ? scoreOf(same.message) : 0;
-	const report = diagnostics.find(({ message }) => message.startsWith(`Function '${MOVED}'`));
+	const report = diagnostics.find(({ message }) => message.startsWith(`Function '${name}' `));
 	const moved = promised.moved === undefined ? undefined : report ? scoreOf(report.message) : 0;
 
 	if (after === promised.remaining && moved === promised.moved) {
