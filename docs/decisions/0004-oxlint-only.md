@@ -11,8 +11,6 @@ The rule works on an ESTree syntax tree through Oxlint's JS plugin API, which fo
 
 Biome added JS plugins in v2.6 as a developer preview. Their API mirrors Biome's Rust lint rules and works on Biome's own syntax tree, not ESTree.
 
-Prettier is a formatter and has no lint rules to extend.
-
 ## Decision
 
 The plugin targets Oxlint only. The package, preset, docs and tests are for Oxlint. There is no ESLint entry point and no Biome plugin.
