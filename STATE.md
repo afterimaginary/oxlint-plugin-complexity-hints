@@ -20,18 +20,17 @@ The diagnostic text is what sets this plugin apart, so the next milestone, "Revi
 
 ## Recently Done
 
+- README claims matched to the evidence, with a Limits section, and the Oxlint-only scope recorded as ADR-0004 (#39)
 - Renamed to `oxlint-plugin-complexity-hints`, with the plugin alias documented (#38)
 - Fix hints evaluated on pinned open-source repositories (#37)
 - Fuzzed against `eslint-plugin-sonarjs` on random programs (#36)
 - README and rule docs for users, with their examples checked against the rule (#35)
-- Package contents checked, and the build loads on Node 20.19 (#34)
-- CLI output pinned in the default and agent formats, with exit codes (#32)
 
 ## Up Next
 
-1. Make the README's claims match the evidence, and state the limits (#39)
-2. Check move-hint promises in the hint evaluation (#40)
-3. Simulate the lint loop to compare hint strategies (#41)
+1. Check move-hint promises in the hint evaluation (#40)
+2. Simulate the lint loop to compare hint strategies (#41)
+3. Benchmark hint strategies with a coding agent in the loop (#42)
 
 ## Needs Your Decision
 

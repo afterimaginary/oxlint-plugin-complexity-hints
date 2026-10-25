@@ -1,6 +1,6 @@
 # `complexity/cognitive-complexity`
 
-Reports a function whose cognitive complexity is over `max`, with a one-line message that says where the complexity comes from and one change that lowers it.
+Reports a function whose cognitive complexity is over `max`, with a one-line message that says where the complexity comes from and one change that would lower it.
 
 Cognitive complexity is SonarSource's measure of how hard a function is to read, defined in their [whitepaper](https://www.sonarsource.com/docs/CognitiveComplexity.pdf). Each break in the linear flow of the code adds a point, and a break nested inside another adds more. Scores match [`eslint-plugin-sonarjs`](https://www.npmjs.com/package/eslint-plugin-sonarjs) rule S3776, and so SonarQube, function for function, with [one exception](#deviations-from-the-whitepaper).
 
@@ -131,7 +131,7 @@ Function 'findUser' has cognitive complexity 8, over the max of 5; main contribu
 
 - **The function**, named so it can be found again, and its score against `max`. The part `has cognitive complexity N, over the max of M` is stable, so tooling can match on it.
 - **Main contributors**: the three heaviest increments, with their lines and points.
-- **Fix**: one change that lowers the score. Inverting an `if` into a guard clause comes first, when one helps, because it removes complexity without moving code. Otherwise it names a block of lines to move into a new function, the score each function ends up with, and how to work around anything that stops the code moving unchanged, such as a `return` or a variable the code around it reads.
+- **Fix**: one change, and the score it reaches. Inverting an `if` into a guard clause comes first, when one helps, because it removes complexity without moving code. Otherwise it names a block of lines to move into a new function, the score each function ends up with, and how to work around anything that stops the code moving unchanged, such as a `return` or a variable the code around it reads. When neither qualifies, it gives a general direction instead, such as splitting the code around a line into smaller functions.
 
 The message is always one line, because Oxlint gives a plugin's diagnostic no help text and its `agent` format prints one line per diagnostic. In `.vue`, `.svelte` and `.astro` files, its line numbers count from the top of the file, like the diagnostic's location.
 

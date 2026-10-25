@@ -63,7 +63,7 @@ Kinds are named `'if'`, `'else if'`, `'else'`, `'?:'`, `'switch'`, `'for'`, `'fo
 
 ## Fix
 
-Exactly one suggested change, which always lowers the score: a guard clause when one saves points, and otherwise moving one region of the function into a new function. A guard comes first because it removes complexity rather than moving it, and it is a small edit that skips no code. Once no guard helps, the next diagnostic suggests a move.
+Exactly one suggested change: a guard clause when one saves points, and otherwise moving one region of the function into a new function. Either one lowers the score, and the fix says to what. When neither qualifies, the [fallback](#fallback) gives a general direction instead. A guard comes first because it removes complexity rather than moving it, and it is a small edit that skips no code. Once no guard helps, the next diagnostic suggests a move.
 
 When another construct of the same kind shares its line, a construct is also given its column: `the body of the 'for' at line 105, column 11`.
 
