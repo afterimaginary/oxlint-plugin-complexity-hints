@@ -4,7 +4,7 @@
 
 ## Where We Are
 
-The repository is scaffolded as a Vite+ library with linting, formatting, git hooks and the `verify` CI workflow. The roadmap is planned as issues across five milestones, and the scope decisions are recorded as ADR-0001 to ADR-0003. `complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md` and reports those over `max` with a single-line message, specified in `docs/specs/diagnostics.md`, that names the main contributors and one fix: a guard clause when one saves points, or else a region to move into a new function, with what stands in the way of moving it. A differential test checks every fixture against `eslint-plugin-sonarjs`, with the whitepaper deviations pinned, and a fuzz test does the same for random programs. JSX conditional rendering scores nothing, and TypeScript-only syntax adds nothing. The repository lints itself with the rule. The README and `docs/rules/cognitive-complexity.md` cover installing, configuring and agent setup.
+The repository is scaffolded as a Vite+ library with linting, formatting, git hooks and the `verify` CI workflow. The roadmap is planned as issues across five milestones, and the scope decisions are recorded as ADR-0001 to ADR-0003. `complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md` and reports those over `max` with a single-line message, specified in `docs/specs/diagnostics.md`, that names the main contributors and one fix: a guard clause when one saves points, or else a region to move into a new function, with what stands in the way of moving it. A differential test checks every fixture against `eslint-plugin-sonarjs`, with the whitepaper deviations pinned, and a fuzz test does the same for random programs. JSX conditional rendering scores nothing, and TypeScript-only syntax adds nothing. The repository lints itself with the rule. The README and `docs/rules/cognitive-complexity.md` cover installing, configuring and agent setup. `vp run evaluate-hints` measures the hints on four pinned open-source repositories, with results in `docs/evaluation/hints.md`: every guard-clause hint there lowers the score exactly as promised.
 
 ## Features
 
@@ -35,4 +35,5 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 ## Notes
 
 - Public-facing repository (see `CONTRIBUTING.md`): issues, PRs and commits must be presentable, with no personal identifiers.
+- Work is paused after #16. Resume with #17, the last issue in "Beyond the basics"; after it, #19 and #20 need decisions before they start.
 - Work order: the earliest milestone first, then the lowest-numbered issue whose dependencies (listed in each issue) are closed.
