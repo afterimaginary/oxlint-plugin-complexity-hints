@@ -500,3 +500,43 @@ export function returnsReadByClosure(xs, ys) {
 	}
 	tail(get);
 }
+
+// A labeled `continue` to a loop outside the region.
+export function continuesToLabel(xs) {
+	outer: for (const x of xs) {
+		for (const y of x.ys) {
+			if (y.ok) {
+				for (const a of y.as) if (a) log(a);
+				for (const b of y.bs) if (b) log(b);
+				if (y.skip) continue outer;
+			}
+			tick();
+		}
+	}
+	tail();
+}
+
+// Reassigns one local and declares another, both read after it.
+export function reassignsAndDeclares(xs, ys) {
+	let count = 0;
+	if (xs) {
+		for (const x of xs) if (x) log(x);
+		for (const y of ys) if (y) log(y);
+		count = xs.length;
+		var found = xs.find(Boolean);
+	}
+	tail(count, found);
+}
+
+// Two reassigned locals come back together.
+export function reassignsTwo(xs, ys) {
+	let count = 0;
+	let last;
+	if (xs) {
+		for (const x of xs) if (x) log(x);
+		for (const y of ys) if (y) log(y);
+		count = xs.length;
+		last = ys.at(-1);
+	}
+	tail(count, last);
+}
