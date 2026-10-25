@@ -39,7 +39,8 @@
 		"prepublishOnly": "vp run build",
 		"prepare": "vp config",
 		"ready": "vp check && vp test",
-		"verify": "vp run ready && vp run build && node scripts/check-package.mjs && node scripts/smoke-dist.mjs"
+		"verify": "vp run ready && vp run build && node scripts/check-package.mjs && node scripts/smoke-dist.mjs",
+		"evaluate-hints": "node scripts/evaluate-hints.mjs && vp fmt docs/evaluation/hints.md"
 	},
 	"devDependencies": {
 		"@oxlint/plugins": "1.83.0",

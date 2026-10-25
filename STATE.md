@@ -15,17 +15,17 @@ The repository is scaffolded as a Vite+ library with linting, formatting, git ho
 
 ## Recently Done
 
+- Fix hints evaluated on pinned open-source repositories (#PR)
 - Fuzzed against `eslint-plugin-sonarjs` on random programs (#36)
 - README and rule docs for users, with their examples checked against the rule (#35)
 - Package contents checked, and the build loads on Node 20.19 (#34)
-- `recommended` preset as `recommended.json` and a typed export, from one source (#33)
 - CLI output pinned in the default and agent formats, with exit codes (#32)
 
 ## Up Next
 
-1. Real-world evaluation harness for hint quality (#16)
-2. Performance benchmark and budget (#17)
-3. Release process and npm publishing with provenance (#19)
+1. Performance benchmark and budget (#17)
+2. Release process and npm publishing with provenance (#19)
+3. Launch checklist: make the repository public (#20)
 
 ## Needs Your Decision
 
