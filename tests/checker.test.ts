@@ -1,5 +1,13 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	unlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, test } from "vite-plus/test";
@@ -474,6 +482,121 @@ describe("when the check can't run", () => {
 		const repo = repository({ "a.js": BUSY });
 
 		expect(run(repo.dir, ["--nope"]).status).toBe(2);
+	});
+});
+
+// The README's command, run as Claude Code runs it: with `sh`, the hook's input on stdin,
+// and `CLAUDE_PROJECT_DIR` set.
+describe("the README's Claude Code hook", () => {
+	const settings = /\n## For agents\n[\s\S]*?^```json\n([\s\S]*?)^```$/m.exec(
+		readFileSync(join(root, "README.md"), "utf8"),
+	)![1]!;
+
+	const command = JSON.parse(settings).hooks.PostToolUse[0].hooks[0].command as string;
+
+	/** A repository whose `node_modules/.bin/complexity-hints` runs the checker from source. */
+	function installed(files: Record<string, string>) {
+		const repo = repository(files);
+
+		repo.write(".gitignore", "node_modules/\n");
+
+		repo.write(
+			"node_modules/.bin/complexity-hints",
+			`#!/bin/sh\nexec "${process.execPath}" "${cli}" --oxlint "${oxlint}" "$@"\n`,
+		);
+
+		chmodSync(join(repo.dir, "node_modules/.bin/complexity-hints"), 0o755);
+
+		return repo;
+	}
+
+	// Run from elsewhere: Claude Code's working directory needn't be the project's.
+	function hook(dir: string, input: object, PATH = process.env.PATH) {
+		const result = spawnSync("/bin/sh", ["-c", command], {
+			cwd: tmpdir(),
+			encoding: "utf8",
+			env: { ...env, CLAUDE_PROJECT_DIR: dir, PATH },
+			input: JSON.stringify(input),
+			timeout: 60_000,
+		});
+
+		return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+	}
+
+	const edit = (path: string) => ({ tool_name: "Edit", tool_input: { file_path: path } });
+
+	const bash = (changedFiles?: string[]) => ({
+		tool_name: "Bash",
+		tool_input: { command: "sed -i '' s/x/y/ a.js" },
+		tool_response: changedFiles ? { bashEditDiff: { changedFiles } } : {},
+	});
+
+	test("an edit that blocks exits 2, with the diagnostics on stderr for the agent", () => {
+		const repo = installed({ "a.js": BUSY });
+
+		repo.edit("a.js", "seen.push(x);", "seen.push(x + 1);");
+
+		const result = hook(repo.dir, edit(join(repo.dir, "a.js")));
+
+		expect(result).toMatchObject({ status: 2, stdout: "" });
+
+		expect(result.stderr).toMatch(/^a\.js:1:17: error complexity\(cognitive-complexity\): /);
+	});
+
+	test("an edit that only gives notes exits 0", () => {
+		const repo = installed({ "a.js": BUSY });
+
+		repo.edit("a.js", "const seen = [];", "const seen = [0];");
+
+		expect(hook(repo.dir, edit(join(repo.dir, "a.js")))).toMatchObject({
+			status: 0,
+			stderr: expect.stringContaining("a.js:1:17: note "),
+		});
+	});
+
+	test("a Bash command checks the files it changed, and one that changed none passes", () => {
+		const repo = installed({ "a.js": BUSY, "b.js": BUSY });
+
+		repo.edit("a.js", "seen.push(x);", "seen.push(x + 1);");
+
+		expect(hook(repo.dir, bash([join(repo.dir, "a.js")])).status).toBe(2);
+
+		expect(hook(repo.dir, bash([join(repo.dir, "b.js")])).status).toBe(0);
+
+		expect(hook(repo.dir, bash())).toMatchObject({ status: 0, stderr: "" });
+	});
+
+	test("a file outside the project passes", () => {
+		const repo = installed({ "a.js": BUSY });
+
+		repo.edit("a.js", "seen.push(x);", "seen.push(x + 1);");
+
+		expect(hook(repo.dir, edit(join(tmpdir(), "notes.js")))).toMatchObject({
+			status: 0,
+			stderr: "",
+		});
+	});
+
+	test("a check that can't run exits 1, which doesn't block the agent", () => {
+		const repo = installed({ "a.js": BUSY });
+
+		repo.edit("a.js", "seen.push(x);", "seen.push(x + 1);");
+
+		repo.git("branch", "-m", "main", "trunk");
+
+		expect(hook(repo.dir, edit(join(repo.dir, "a.js")))).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining("--base"),
+		});
+
+		expect(hook(repo.dir, edit(join(repo.dir, "a.js")), "/nonexistent")).toMatchObject({
+			status: 1,
+			stderr: expect.stringContaining("jq not found"),
+		});
+
+		rmSync(join(repo.dir, "node_modules"), { recursive: true });
+
+		expect(hook(repo.dir, edit(join(repo.dir, "a.js"))).status).toBe(1);
 	});
 });
 
