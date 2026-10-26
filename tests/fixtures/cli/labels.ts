@@ -106,3 +106,13 @@ handlers[0]!((a: boolean) => {
 	if (a) {
 	}
 });
+
+// The key sits on a line before the parameters, where the function node starts.
+export const splitKey = {
+	method
+	() {
+		if (target) {
+			return 1;
+		}
+	},
+};

@@ -1,7 +1,7 @@
 import type { ESTree, Rule, Visitor } from "@oxlint/plugins";
 import { describeContributors, rankContributors } from "../contributors.ts";
 import { describeFunction } from "../describe-function.ts";
-import { suggestFix, type Strategy } from "../hint.ts";
+import { lines, suggestFix, type Strategy } from "../hint.ts";
 import { reportLocation } from "../report-location.ts";
 import { scriptBlockStart, toFilePositions, type BlockStart } from "../script-block.ts";
 import {
@@ -43,7 +43,7 @@ export function createRule(strategy: Strategy = "guard if enough"): Rule {
 			messages: {
 				// One line: see docs/specs/diagnostics.md.
 				tooComplex:
-					"{{label}} has cognitive complexity {{total}}, over the max of {{max}}; main contributors: {{contributors}}; fix: {{fix}}.",
+					"{{label}} at {{lines}} has cognitive complexity {{total}}, over the max of {{max}}; main contributors: {{contributors}}; fix: {{fix}}.",
 			},
 			schema: [
 				{
@@ -114,16 +114,21 @@ export function createRule(strategy: Strategy = "guard if enough"): Rule {
 					// Read from disk once per script block, and only when something is reported.
 					blockStart ??= scriptBlockStart(context.physicalFilename, context.sourceCode.text);
 
+					const loc = reportLocation(unit, context.sourceCode);
+					// A method's key can sit on a line before its parameters, where the node starts.
+					const firstLine = Math.min(loc.start.line, unit.loc.start.line);
+
 					context.report({
 						messageId: "tooComplex",
 						data: {
 							label: describeFunction(unit),
+							lines: toFilePositions(lines(firstLine, unit.loc.end.line), blockStart),
 							total,
 							max,
 							contributors: toFilePositions(describeContributors(ranked), blockStart),
 							fix: toFilePositions(fix, blockStart),
 						},
-						loc: reportLocation(unit, context.sourceCode),
+						loc,
 					});
 				}
 			}

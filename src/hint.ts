@@ -21,7 +21,8 @@ function span(first: ESTree.Node, last: ESTree.Node) {
 	};
 }
 
-function lines(firstLine: number, lastLine: number): string {
+/** `line N`, or `lines N-M`: how the message words a run of lines. */
+export function lines(firstLine: number, lastLine: number): string {
 	return firstLine === lastLine ? `line ${firstLine}` : `lines ${firstLine}-${lastLine}`;
 }
 
