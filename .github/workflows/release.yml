@@ -1,7 +1,7 @@
-# Publishes to npm when a GitHub release is published. The release's tag (`v1.2.3`) is
-# the version: package.json stays at 0.0.0 in the repository, and this job sets it before
-# publishing. npm trusts this workflow through trusted publishing, so no npm token is
-# stored, and pnpm attaches provenance on its own.
+# Stages a version on npm when a GitHub release is published, for a maintainer to approve
+# with 2FA. The release's tag (`v1.2.3`) is the version: package.json stays at 0.0.0 in the
+# repository, and this job sets it before staging. npm trusts this workflow through trusted
+# publishing, which allows it to stage and not to publish, so no npm token is stored.
 name: release
 
 on:
@@ -34,4 +34,4 @@ jobs:
       - run: vp pm version "${GITHUB_REF_NAME#v}" -- --no-git-tag-version
       - run: vp run verify
       # The release checks out a tag, not a branch, so pnpm's branch checks don't apply.
-      - run: vp pm publish --no-git-checks
+      - run: vp pm stage publish --provenance -- --no-git-checks

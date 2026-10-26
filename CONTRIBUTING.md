@@ -51,9 +51,15 @@ A maintainer publishes a GitHub release from `main`, and the tag is the version:
 gh release create v0.1.0 --target main --generate-notes
 ```
 
-The tag has to be a plain `vX.Y.Z` on a commit in `main`; anything else fails before publishing. The `release` workflow sets the version from the tag, runs `verify` and publishes to npm with provenance, through npm's trusted publishing, so no token is stored. `package.json` stays at `0.0.0` in the repository. The release notes GitHub generates from the merged pull requests are the changelog.
+The tag has to be a plain `vX.Y.Z` on a commit in `main`; anything else fails before anything reaches npm. The `release` workflow sets the version from the tag, runs `verify` and stages the package on npm with provenance, through npm's trusted publishing, so no token is stored. `package.json` stays at `0.0.0` in the repository. The release notes GitHub generates from the merged pull requests are the changelog.
 
-npm only lets a package that already exists trust a workflow, so the first time, a maintainer publishes the `0.0.0` placeholder by hand with `vp pm publish`, adds `release.yml` as the package's trusted publisher on npmjs.com, and creates the first release within two days, which npm requires of a new trusted publisher.
+A staged version isn't installable until a maintainer approves it with 2FA. The workflow's log prints the stage id:
+
+```bash
+vp pm stage approve <stage-id>
+```
+
+The trusted publisher on npm allows `release.yml` to stage, and not to publish directly, so neither a GitHub release nor a leaked GitHub token can put a version live on its own.
 
 ## License
 
