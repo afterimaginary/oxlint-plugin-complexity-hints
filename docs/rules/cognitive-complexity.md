@@ -126,10 +126,10 @@ To change the threshold, extend the preset and set the rule again; the later set
 ## The message
 
 ```
-Function 'findUser' has cognitive complexity 8, over the max of 5; main contributors: 'if' at line 4 (+3, nested 2 deep), 'if' at line 3 (+2, nested 1 deep), 'for...of' at line 2 (+1); fix: move lines 3-9 (the body of the 'for...of' at line 2) into a new function; it returns from this function on some paths, so have it return the result or undefined, and return that from the caller when it is defined; this one drops to 3 and the new one scores 5.
+Function 'findUser' at lines 1-13 has cognitive complexity 8, over the max of 5; main contributors: 'if' at line 4 (+3, nested 2 deep), 'if' at line 3 (+2, nested 1 deep), 'for...of' at line 2 (+1); fix: move lines 3-9 (the body of the 'for...of' at line 2) into a new function; it returns from this function on some paths, so have it return the result or undefined, and return that from the caller when it is defined; this one drops to 3 and the new one scores 5.
 ```
 
-- **The function**, named so it can be found again, and its score against `max`. The part `has cognitive complexity N, over the max of M` is stable, so tooling can match on it.
+- **The function**, named so it can be found again, the lines it spans, and its score against `max`. The part `has cognitive complexity N, over the max of M` is stable, so tooling can match on it.
 - **Main contributors**: the three heaviest increments, with their lines and points.
 - **Fix**: one change, and the score it reaches. Inverting an `if` into a guard clause comes first when that alone brings the function to the max, because it removes complexity without moving code; a guard that isn't enough is suggested only when no move leaves a lower score. Otherwise it names a block of lines to move into a new function, the score each function ends up with, and how to work around anything that stops the code moving unchanged, such as a `return` or a variable the code around it reads. When neither qualifies, it gives a general direction instead, such as splitting the code around a line into smaller functions.
 

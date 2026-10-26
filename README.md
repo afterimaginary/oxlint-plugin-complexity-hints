@@ -45,7 +45,7 @@ export function shippingCost(order, rates) {
 `oxlint --format agent` with the `recommended` preset:
 
 ```text
-src/shipping.js:1:17: error complexity(cognitive-complexity): Function 'shippingCost' has cognitive complexity 20, over the max of 15; main contributors: 'if' at line 15 (+4, nested 3 deep), 'if' at line 6 (+3, nested 2 deep), 'for...of' at line 14 (+3, nested 2 deep); fix: move lines 6-18 (the body of the 'if' at line 5) into a new function; it reassigns 'total', which the code around it reads, so have it return the new 'total' and assign it from the call; this one drops to 6 and the new one scores 8.
+src/shipping.js:1:17: error complexity(cognitive-complexity): Function 'shippingCost' at lines 1-27 has cognitive complexity 20, over the max of 15; main contributors: 'if' at line 15 (+4, nested 3 deep), 'if' at line 6 (+3, nested 2 deep), 'for...of' at line 14 (+3, nested 2 deep); fix: move lines 6-18 (the body of the 'if' at line 5) into a new function; it reassigns 'total', which the code around it reads, so have it return the new 'total' and assign it from the call; this one drops to 6 and the new one scores 8.
 ```
 
 On the open-source codebases in the [hint evaluation](docs/evaluation/hints.md), every fix that states a score, whether a guard clause or a move into a new function, reached exactly that score once it was made. Once the agent makes the change, the next run scores the function again and suggests the next one.

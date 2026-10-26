@@ -7,15 +7,16 @@ Oxlint's JS plugin diagnostics have no `help` text and no docs URL, and `--forma
 ## Format
 
 ```
-<label> has cognitive complexity <total>, over the max of <max>; main contributors: <contributors>; fix: <fix>.
+<label> at <lines> has cognitive complexity <total>, over the max of <max>; main contributors: <contributors>; fix: <fix>.
 ```
 
 For example:
 
 ```
-Function 'deep' has cognitive complexity 10, over the max of 0; main contributors: 'if' at line 20 (+4, nested 3 deep), 'while' at line 19 (+3, nested 2 deep), 'for...of' at line 18 (+2, nested 1 deep); fix: move lines 19-22 (the body of the 'for...of' at line 18) into a new function; this one drops to 3 and the new one scores 3.
+Function 'deep' at lines 16-25 has cognitive complexity 10, over the max of 0; main contributors: 'if' at line 20 (+4, nested 3 deep), 'while' at line 19 (+3, nested 2 deep), 'for...of' at line 18 (+2, nested 1 deep); fix: move lines 19-22 (the body of the 'for...of' at line 18) into a new function; this one drops to 3 and the new one scores 3.
 ```
 
+- `<lines>` is the function's own span, `lines A-B` or `line A`, from the diagnostic's location or the start of the function, whichever comes first (so a method's key counts), to its closing brace. It includes any nested functions. It lets tooling tell which edits touch the function, since the diagnostic's location covers only where the function starts.
 - Semicolons separate the three parts, and commas separate contributors.
 - The part `has cognitive complexity <total>, over the max of <max>` is stable. Tooling may match on it.
 - The message never contains a newline: see [Function label](#function-label).

@@ -84,7 +84,8 @@ function listing({ name, diagnostics, applied }) {
 	const lines = diagnostics.map((diagnostic) => {
 		const { message } = diagnostic;
 		const where = whereOf(diagnostic);
-		const label = message.slice(0, message.indexOf(" has cognitive complexity"));
+		// Greedy, so a label that itself contains " at line" keeps it.
+		const label = /^(.*) at lines? \d+(?:-\d+)? has cognitive complexity /.exec(message)[1];
 		const result = results.get(where);
 		const outcome = result ? `: ${result.outcome}, to ${scores(result)}` : "";
 
