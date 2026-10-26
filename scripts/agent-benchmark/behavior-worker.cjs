@@ -6,6 +6,7 @@
 // summary.
 "use strict";
 
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const Module = require("node:module");
 const path = require("node:path");
@@ -136,9 +137,19 @@ const all = [...samples, ...fileSamples()];
 const linter = new Linter({ configType: "flat" });
 const checks = all.flatMap((sample) => sets.map((options) => ({ sample, options })));
 
+/**
+ * An outcome as a short hash, so the original's results for a rule with many option sets
+ * fit in a file; the prefix says whether the rule reported anything.
+ */
+const digest = (text) =>
+	`${text === "[]" || text.startsWith("throws") ? "-" : "+"}${crypto.createHash("sha256").update(text).digest("hex").slice(0, 24)}`;
+
+const original = require(path.join(base, "lib/rules", `${rule}.js`));
+
 if (!fs.existsSync(cache)) {
-	const original = require(path.join(base, "lib/rules", `${rule}.js`));
-	const outcomes = checks.map(({ sample, options }) => outcome(linter, original, options, sample));
+	const outcomes = checks.map(({ sample, options }) =>
+		digest(outcome(linter, original, options, sample)),
+	);
 
 	fs.writeFileSync(cache, JSON.stringify(outcomes));
 }
@@ -162,11 +173,11 @@ for (const [index, { sample, options }] of checks.entries()) {
 
 	compared++;
 
-	if (after !== expected[index]) {
+	if (digest(after) !== expected[index]) {
 		differences.push({
 			sample: sample.name,
 			options,
-			before: expected[index].slice(0, 300),
+			before: outcome(linter, original, options, sample).slice(0, 300),
 			after: after.slice(0, 300),
 		});
 	}
@@ -178,7 +189,7 @@ process.stdout.write(
 		samples: all.length,
 		checks: checks.length,
 		compared,
-		reporting: expected.filter((text) => text !== "[]" && !text.startsWith("throws")).length,
+		reporting: expected.filter((hash) => hash.startsWith("+")).length,
 		differences,
 	}),
 );

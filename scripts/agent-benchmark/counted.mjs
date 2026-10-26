@@ -31,13 +31,22 @@ function blockNumbers(label) {
 
 /** Whether the next block fits, and why not. */
 function fits({ funding, budget, reserve, maxUtilization, estimateFrom }, label, size) {
-	const records = readRecords(label);
+	// Only runs the model took part in say what a run costs; a failed request costs nothing.
+	const modelRuns = (folder) =>
+		readRecords(folder).filter((record) => record.outcome.kind === "model");
+
+	const records = modelRuns(label);
 
 	// Before the first block, the cost per run comes from the check runs, at the same prices.
-	const sample = records.length > 0 ? records : readRecords(estimateFrom);
+	const sample = records.length > 0 ? records : modelRuns(estimateFrom);
 
 	if (funding === "api") {
-		const spent = records.reduce((sum, record) => sum + (record.result?.costUsd ?? 0), 0);
+		// Spending counts every run, the service's failures included.
+		const spent = readRecords(label).reduce(
+			(sum, record) => sum + (record.result?.costUsd ?? 0),
+			0,
+		);
+
 		const sampled = sample.reduce((sum, record) => sum + (record.result?.costUsd ?? 0), 0);
 		const mean = sample.length > 0 ? sampled / sample.length : undefined;
 

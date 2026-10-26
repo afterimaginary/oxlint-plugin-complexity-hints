@@ -6,17 +6,19 @@
 //   node scripts/agent-benchmark/benchmark.mjs check --label <name> --runs <rule>:<arm>,...
 //       [--model <id>] [--effort <level>] [--max-turns <n>] [--max-budget <usd>]
 //     Runs the listed task and arm pairs on the subscription, one at a time.
+//   node scripts/agent-benchmark/benchmark.mjs rescore --label <name> [--rule <rule>]
+//     Scores kept runs again from their snapshots, after a fix to the scoring.
 //   node scripts/agent-benchmark/benchmark.mjs counted --label <name> --model <id> --arms A,B
 //       --tasks <n> --blocks <n> --funding subscription|api [--key-file <path> --budget <usd>]
 //     Runs counted blocks; see "Running it" in the design.
-import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { RULE, rewrite } from "../apply-hints.ts";
 import { lint } from "../eval-repos.mjs";
 import { bundleDir, prepare } from "./prepare.mjs";
 import { counted } from "./counted.mjs";
-import { findTask, keep, loadTasks, summarize } from "./records.mjs";
+import { findTask, keep, loadTasks, resultsDir, summarize } from "./records.mjs";
 import { classify, initSnapshots, runAgent, scoreRun } from "./run-agent.mjs";
 import { score, snapshotGit } from "./score.mjs";
 import { createWorkspace, removeWorkspace } from "./workspace.mjs";
@@ -204,6 +206,42 @@ function applyHint(work, task) {
 	writeFileSync(path, rewritten.text);
 }
 
+/**
+ * Scores kept runs again, each from its last snapshot in a fresh tree, so a fix to the
+ * scoring doesn't need new runs. `--rule` limits it to one task.
+ */
+async function rescore(options) {
+	await prepare();
+
+	const tasks = loadTasks();
+	const root = join(resultsDir, options.label);
+
+	for (const path of readdirSync(root, { recursive: true }).filter((file) =>
+		file.endsWith("run.json"),
+	)) {
+		const meta = join(root, dirname(path));
+		const record = JSON.parse(readFileSync(join(meta, "run.json"), "utf8"));
+
+		if (record.outcome.kind !== "model" || (options.rule && record.rule !== options.rule)) {
+			continue;
+		}
+
+		const workspace = createWorkspace(record.arm);
+
+		try {
+			const restored = { ...workspace, meta };
+
+			snapshotGit(restored, ["checkout", "-f", "HEAD", "--", "."]);
+
+			scoreRun({ record, workspace: restored }, findTask(tasks, record.rule));
+
+			console.log(summarize(record));
+		} finally {
+			removeWorkspace(workspace);
+		}
+	}
+}
+
 async function selftest() {
 	await prepare();
 
@@ -259,6 +297,7 @@ const { positionals, values } = parseArgs({
 	allowPositionals: true,
 	options: {
 		label: { type: "string", default: "check" },
+		rule: { type: "string" },
 		runs: { type: "string" },
 		model: { type: "string", default: "claude-sonnet-5-5" },
 		effort: { type: "string", default: "high" },
@@ -277,6 +316,11 @@ const { positionals, values } = parseArgs({
 	},
 });
 
-const commands = { selftest, check, counted };
+const commands = {
+	selftest,
+	check,
+	counted,
+	rescore,
+};
 
 await commands[positionals[0]](values);
