@@ -41,7 +41,8 @@ function lint(paths: string[], config = "oxlintrc.json"): Report {
 // Every hint states the score its change reaches. Making each change the way the hint
 // says and linting again checks that statement for every kind of fix and obstacle.
 describe("every fix hint in the CLI fixtures", () => {
-	test("reaches the scores it promises", () => {
+	// Several Oxlint runs, which take up to 5s on CI runners, Vitest's default timeout.
+	test("reaches the scores it promises", { timeout: 30_000 }, () => {
 		for (const fixture of [...fixtures, guards]) {
 			cpSync(join(root, "tests/fixtures/cli", fixture), join(project, fixture));
 		}
