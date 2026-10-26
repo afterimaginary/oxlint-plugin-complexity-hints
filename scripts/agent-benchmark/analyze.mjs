@@ -67,13 +67,32 @@ const blocksOf = (label) => {
  * order, so the bootstrap draws the same samples on any machine.
  */
 export function blockRecords(label) {
-	return blocksOf(label)
-		.filter(({ summary }) => summary.complete)
-		.flatMap(({ name, number }) =>
-			readRecords(label, name)
-				.map((record) => ({ ...record, block: number }))
-				.toSorted((a, b) => a.startedAt.localeCompare(b.startedAt)),
-		);
+	const complete = blocksOf(label).filter(({ summary }) => summary.complete);
+
+	// The runner refuses to mix settings under a label; this checks it held.
+	const settings = new Set(
+		complete.map(({ summary }) =>
+			JSON.stringify([
+				summary.model,
+				summary.arms,
+				summary.tasks,
+				summary.effort,
+				summary.maxTurns,
+				summary.maxBudgetUsd,
+				summary.provenance,
+			]),
+		),
+	);
+
+	if (settings.size > 1) {
+		throw new Error(`The complete blocks of ${label} weren't all run with the same settings`);
+	}
+
+	return complete.flatMap(({ name, number }) =>
+		readRecords(label, name)
+			.map((record) => ({ ...record, block: number }))
+			.toSorted((a, b) => a.startedAt.localeCompare(b.startedAt)),
+	);
 }
 
 /** The runs that count: the model's, from complete blocks. */
@@ -269,6 +288,10 @@ function failures(all, counted, label) {
 function failureReason({ result, score }) {
 	if (result?.subtype !== "success") {
 		return result?.subtype ?? "no result";
+	}
+
+	if (score.error) {
+		return `scoring error, to be scored again: ${score.error.split("\n")[0]}`;
 	}
 
 	const checks = [

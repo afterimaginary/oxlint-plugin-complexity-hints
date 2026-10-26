@@ -12,13 +12,23 @@ import {
 	rmSync,
 	writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { platform, tmpdir } from "node:os";
 import { join } from "node:path";
 import { build } from "vite/rolldown";
 import { checkout, repositories, root, run } from "../eval-repos.mjs";
 import { ARMS } from "./arm-plugin.ts";
 
-export const benchDir = process.env.AGENT_BENCH_DIR ?? join(tmpdir(), "complexity-agent-benchmark");
+/**
+ * Where the benchmark keeps its trees and records. Not the temp folder, which macOS clears
+ * of files untouched for three days; not under the home folder, whose path names the user
+ * and shows in every record; and on the same volume as /tmp, which runs' leftovers move from.
+ */
+export const benchDir =
+	process.env.AGENT_BENCH_DIR ??
+	(platform() === "darwin"
+		? "/Users/Shared/complexity-agent-benchmark"
+		: join(tmpdir(), "complexity-agent-benchmark"));
+
 export const baseDir = join(benchDir, "eslint");
 export const bundleDir = join(benchDir, "plugins");
 
@@ -68,6 +78,19 @@ export const OXLINTRC = {
 const SETTINGS = JSON.parse(
 	/```json\n(\{\n\t"hooks"[\s\S]*?)```/.exec(readFileSync(join(root, "README.md"), "utf8"))[1],
 );
+
+/**
+ * The environment the agent's code runs in while it's scored: just enough to find Node,
+ * so nothing of the user's reaches it.
+ */
+export const SCORING_ENV = { PATH: process.env.PATH };
+
+/** Git with no global or system config, so the user's settings can't change what it records. */
+export const GIT_ENV = {
+	PATH: process.env.PATH,
+	GIT_CONFIG_GLOBAL: "/dev/null",
+	GIT_CONFIG_NOSYSTEM: "1",
+};
 
 export const sha256 = (text) => createHash("sha256").update(text).digest("hex");
 
@@ -245,6 +268,9 @@ export function provenance(hashes) {
 		eslint: { tag: eslint.tag, commit: eslint.commit },
 		corpus: { tag: prettier.tag, commit: prettier.commit },
 		lockfile: sha256(readFileSync(lockfile)),
+		// This repository's lockfile pins the parser the scoring counts functions and comments with.
+		repositoryLockfile: sha256(readFileSync(join(root, "pnpm-lock.yaml"))),
+		node: process.version,
 		oxlint: OXLINT,
 		sdk: SDK,
 		hook: sha256(JSON.stringify(SETTINGS)),
@@ -253,8 +279,15 @@ export function provenance(hashes) {
 	};
 }
 
+/** The bundles as they are now, hashed without rebuilding them. */
+export const bundleHashes = () =>
+	Object.fromEntries(
+		ARMS.map(({ arm }) => [arm, sha256(readFileSync(join(bundleDir, `${arm}.mjs`)))]),
+	);
+
 export async function prepare() {
-	mkdirSync(benchDir, { recursive: true });
+	// Only this user reads it; /Users/Shared is open to every account.
+	mkdirSync(benchDir, { recursive: true, mode: 0o700 });
 
 	base();
 

@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { copyFileSync, mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { run } from "../eval-repos.mjs";
-import { baseDir, benchDir, bundleDir, PLUGIN_PATH } from "./prepare.mjs";
+import { baseDir, benchDir, bundleDir, GIT_ENV, PLUGIN_PATH } from "./prepare.mjs";
 
 export const runsDir = join(benchDir, "runs");
 
@@ -24,7 +24,12 @@ export function createWorkspace(arm) {
 
 	mkdirSync(npmCache);
 
-	const clone = run("git", ["clone", "-q", "--shared", baseDir, work], runsDir);
+	// The session's home, empty, so nothing of the user's is in it.
+	const home = join(dir, "home");
+
+	mkdirSync(home);
+
+	const clone = run("git", ["clone", "-q", "--shared", baseDir, work], runsDir, { env: GIT_ENV });
 
 	if (clone.status !== 0) {
 		throw new Error(clone.stderr);
@@ -44,6 +49,7 @@ export function createWorkspace(arm) {
 		work,
 		meta,
 		npmCache,
+		home,
 	};
 }
 

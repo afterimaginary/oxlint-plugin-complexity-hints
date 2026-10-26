@@ -3,9 +3,10 @@
 // lib/ and tests/fixtures/, and on a corpus ESLint doesn't lint itself with (Prettier's
 // src/), where rules ESLint enforces on its own code still find things to report. Run by
 // scripts/agent-benchmark/score.mjs as
-// `node behavior-worker.cjs <base> <work> <rule> <cache> <corpus>`, with ESLint's Linter
-// from the base tree. Code that doesn't parse is left out, since no rule runs on it. The
-// original's results are computed once and kept in <cache>. Prints a JSON summary.
+// `node behavior-worker.cjs <base> <work> <rule> <cache> <corpus> <summary>`, with ESLint's
+// Linter from the base tree. Code that doesn't parse is left out, since no rule runs on it.
+// The original's results are computed once and kept in <cache>. Writes a JSON summary to
+// <summary>, so nothing the edited rule prints can get in its way.
 "use strict";
 
 const crypto = require("node:crypto");
@@ -13,7 +14,7 @@ const fs = require("node:fs");
 const Module = require("node:module");
 const path = require("node:path");
 
-const [base, work, rule, cache, corpus] = process.argv.slice(2);
+const [base, work, rule, cache, corpus, summary] = process.argv.slice(2);
 const { Linter } = require(path.join(base, "lib/linter"));
 
 /** Stop comparing after this many differences; one is enough to fail. */
@@ -194,6 +195,13 @@ if (expected.length !== checks.length) {
 	throw new Error(`The cache at ${cache} doesn't match this rule's checks`);
 }
 
+// The edited rule may print, for debugging; its output is dropped rather than filling memory.
+for (const method of ["log", "info", "warn", "error", "debug", "trace", "dir", "table"]) {
+	console[method] = () => {};
+}
+
+process.stdout.write = () => true;
+
 const edited = require(path.join(work, "lib/rules", `${rule}.js`));
 const differences = [];
 let compared = 0;
@@ -222,7 +230,8 @@ const reporting = (kind) =>
 	expected.filter((hash, index) => hash.startsWith("+") && checks[index].sample.kind === kind)
 		.length;
 
-process.stdout.write(
+fs.writeFileSync(
+	summary,
 	JSON.stringify({
 		optionSets: sets.length,
 		samples: all.length,

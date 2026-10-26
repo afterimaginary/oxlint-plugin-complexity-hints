@@ -48,12 +48,15 @@ export const repositories = [
 // `FORCE_COLOR` add colors. None of them belong in a plain Oxlint run.
 const { VP_VERSION: _vp, CI: _ci, FORCE_COLOR: _color, ...env } = process.env;
 
-/** `options.timeout`, in milliseconds, kills the command and throws once it's reached. */
-export function run(command, args, cwd, { timeout } = {}) {
+/**
+ * `options.timeout`, in milliseconds, kills the command and throws once it's reached;
+ * `options.env` replaces the environment.
+ */
+export function run(command, args, cwd, { timeout, env: replaced } = {}) {
 	const result = spawnSync(command, args, {
 		cwd,
 		encoding: "utf8",
-		env,
+		env: replaced ?? env,
 		maxBuffer: 1 << 28,
 		timeout,
 	});

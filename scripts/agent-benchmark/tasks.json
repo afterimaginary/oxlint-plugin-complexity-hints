@@ -10,6 +10,8 @@
 			"commit": "186e0966b010d57a0be1185494ce772becf5dac4"
 		},
 		"lockfile": "288369de52de1a6c0b16c108ae8225bb8cbd6910e08406e3c8c80080a347953d",
+		"repositoryLockfile": "ca7ff964272bdbe6c76de396533ac69944e9a0e7b16347d79c791aa249a959ec",
+		"node": "v24.22.1",
 		"oxlint": "1.83.0",
 		"sdk": "0.3.310",
 		"hook": "b93c4801622bea4344790f36bc73074da27895934fe6b3831027ed242a237ccd",
@@ -18,7 +20,7 @@
 			"B": "a3f610b881e4fa644afe8fb005ceb9a05d09947f9701a9727927e27cfc964baa",
 			"C": "5188290ea3a42189694a45d40377d362c8412e2c9b8ed28891542a974289deef"
 		},
-		"harness": "f7f8b63c408014d07d22afd19b476b8c244287c1582aa9fc4d1d1154a082dd3f"
+		"harness": "208edff3d7e7b7b1b5bb957eebd24b3a1928b6ad0db5e4860566f5f3e79d6374"
 	},
 	"split": [
 		{

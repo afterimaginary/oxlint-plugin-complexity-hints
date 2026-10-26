@@ -6,6 +6,7 @@ import {
 	appendFileSync,
 	existsSync,
 	mkdirSync,
+	lstatSync,
 	readdirSync,
 	readFileSync,
 	realpathSync,
@@ -16,9 +17,9 @@ import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { root, run } from "../eval-repos.mjs";
-import { baseDir, benchDir, bundleDir } from "./prepare.mjs";
+import { baseDir, benchDir, bundleDir, GIT_ENV } from "./prepare.mjs";
 import { resultsDir } from "./records.mjs";
-import { score, snapshotGit } from "./score.mjs";
+import { ignoredFiles, score, snapshotGit } from "./score.mjs";
 import { createWorkspace, runsDir } from "./workspace.mjs";
 
 const SDK_VERSION = JSON.parse(
@@ -57,10 +58,13 @@ const STOP = /credit balance is too low|usage limit|spend limit|out of (?:extra 
  * Code session's among them) don't reach the agent. An API key is passed only when
  * `funding` is "api".
  */
-export function environment(funding, apiKey, npmCache) {
+export function environment(funding, apiKey, workspace) {
 	const env = {
 		PATH: process.env.PATH,
-		HOME: homedir(),
+		// On the API, an empty home of the run's own, so the user's name, git identity and
+		// dotfiles stay out of what the agent sees and what the records keep. The
+		// subscription's login lives in the real one.
+		HOME: funding === "api" ? workspace.home : homedir(),
 		USER: process.env.USER,
 		LOGNAME: process.env.LOGNAME,
 		SHELL: process.env.SHELL,
@@ -72,7 +76,7 @@ export function environment(funding, apiKey, npmCache) {
 		DISABLE_AUTOUPDATER: "1",
 		npm_config_update_notifier: "false",
 		npm_config_offline: "true",
-		npm_config_cache: npmCache,
+		npm_config_cache: workspace.npmCache,
 	};
 
 	return funding === "api" ? { ...env, ANTHROPIC_API_KEY: apiKey } : env;
@@ -125,6 +129,7 @@ function snapshot(workspace, message) {
 			"--quiet",
 		],
 		workspace.work,
+		{ env: GIT_ENV },
 	).status;
 
 	if (changed !== 0) {
@@ -155,7 +160,7 @@ function snapshotter(workspace, steps) {
 export function initSnapshots(workspace) {
 	const git = join(workspace.meta, "snapshots.git");
 
-	run("git", ["init", "-q", "--bare", git], workspace.meta);
+	run("git", ["init", "-q", "--bare", git], workspace.meta, { env: GIT_ENV });
 
 	// Blobs the base tree already has aren't stored again.
 	writeFileSync(join(git, "objects/info/alternates"), `${join(baseDir, ".git/objects")}\n`);
@@ -176,6 +181,11 @@ export function initSnapshots(workspace) {
 	]);
 
 	snapshotGit(workspace, ["tag", "baseline"]);
+
+	writeFileSync(
+		join(workspace.meta, "ignored-baseline.json"),
+		JSON.stringify(ignoredFiles(workspace)),
+	);
 
 	snapshotGit(workspace, ["config", "user.name", "bench"]);
 
@@ -236,14 +246,25 @@ const tmpEntries = () => new Set(readdirSync(SYSTEM_TMP));
 
 /**
  * Moves what the run left in the system temp folder into its records, so the next run
- * can't read it: entries that appeared during the run and that its messages name.
+ * can't read it: entries its messages name that it created, and files that were there
+ * before and that it rewrote. Folders that were there before stay, since other programs
+ * keep theirs there; Claude Code's own are never touched.
  */
-function collectTmp(before, stream, meta) {
-	const messages = readFileSync(stream, "utf8");
+function collectTmp(before, startedAt, stream, meta) {
+	// Only what the agent itself named: the session's own messages name Claude Code's files.
+	const named = JSON.stringify(toolCalls(stream).map((call) => call.input));
 
-	const left = [...tmpEntries()].filter(
-		(name) => !before.has(name) && messages.includes(`/tmp/${name}`),
-	);
+	const left = [...tmpEntries()].filter((name) => {
+		if (/^(?:claude|cc-)/.test(name) || !named.includes(`/tmp/${name}`)) {
+			return false;
+		}
+
+		const stat = lstatSync(join(SYSTEM_TMP, name));
+
+		return before.has(name)
+			? stat.isFile() && stat.mtimeMs >= startedAt
+			: stat.isFile() || stat.isDirectory() || stat.isSymbolicLink();
+	});
 
 	if (left.length > 0) {
 		mkdirSync(join(meta, "tmp"));
@@ -256,17 +277,23 @@ function collectTmp(before, stream, meta) {
 	return left;
 }
 
-/** Tool calls, the agent's own lint runs and the hook's, counted from the message stream. */
-function activity(stream) {
-	const messages = readFileSync(stream, "utf8")
+const messagesOf = (stream) =>
+	readFileSync(stream, "utf8")
 		.split("\n")
 		.filter(Boolean)
 		.map((line) => JSON.parse(line));
 
-	const calls = messages
+/** The agent's tool calls, from the message stream. */
+const toolCalls = (stream) =>
+	messagesOf(stream)
 		.filter((message) => message.type === "assistant")
 		.flatMap((message) => message.message.content)
 		.filter((block) => block.type === "tool_use");
+
+/** Tool calls, the agent's own lint runs and the hook's, counted from the message stream. */
+function activity(stream) {
+	const messages = messagesOf(stream);
+	const calls = toolCalls(stream);
 
 	return {
 		toolCalls: calls.length,
@@ -407,7 +434,7 @@ export async function runAgent({
 			// The scrub above rules out bypassing permissions, so the tools are approved by name.
 			permissionMode: "default",
 			allowedTools: TOOLS,
-			env: environment(funding, apiKey, workspace.npmCache),
+			env: environment(funding, apiKey, workspace),
 			maxTurns,
 			maxBudgetUsd,
 			sandbox: sandbox(workspace),
@@ -430,7 +457,7 @@ export async function runAgent({
 
 	Object.assign(record, activity(stream));
 
-	record.tmpFiles = collectTmp(before, stream, workspace.meta);
+	record.tmpFiles = collectTmp(before, Date.parse(record.startedAt), stream, workspace.meta);
 
 	writeFileSync(join(workspace.meta, "steps.json"), JSON.stringify(steps, null, "\t"));
 
@@ -470,9 +497,12 @@ export function leaks(workspace, apiKey) {
 		return false;
 	}
 
-	return readdirSync(workspace.meta, { recursive: true, withFileTypes: true })
+	const inFiles = readdirSync(workspace.meta, { recursive: true, withFileTypes: true })
 		.filter((entry) => entry.isFile() && !entry.parentPath.includes("snapshots.git"))
 		.some((entry) => readFileSync(join(entry.parentPath, entry.name), "utf8").includes(apiKey));
+
+	// The snapshots' objects are compressed, so their contents are read through git.
+	return inFiles || snapshotGit(workspace, ["log", "-p", "--all"]).includes(apiKey);
 }
 
 /**
@@ -481,7 +511,13 @@ export function leaks(workspace, apiKey) {
  */
 export function scoreRun({ record, workspace }, task) {
 	if (record.outcome.kind === "model") {
-		record.score = score(workspace, task);
+		// A bug in the scoring mustn't lose a run that's been paid for: the run is kept, marked,
+		// and can be scored again once the bug is fixed.
+		try {
+			record.score = score(workspace, task);
+		} catch (error) {
+			record.score = { success: false, error: String(error.stack ?? error).slice(0, 2000) };
+		}
 	}
 
 	writeFileSync(join(workspace.meta, "run.json"), JSON.stringify(record, null, "\t"));

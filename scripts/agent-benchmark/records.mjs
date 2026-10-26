@@ -1,5 +1,13 @@
 // The tasks a benchmark runs, and where its runs' records are kept.
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	cpSync,
+	existsSync,
+	lstatSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	writeFileSync,
+} from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { baseDir, benchDir } from "./prepare.mjs";
 import { TASKS_FILE } from "./tasks.mjs";
@@ -53,7 +61,15 @@ export function keep(workspace, ...folder) {
 
 	mkdirSync(dir, { recursive: true });
 
-	cpSync(workspace.meta, dir, { recursive: true });
+	// Sockets and pipes a run left in /tmp can't be copied, and hold nothing to keep.
+	cpSync(workspace.meta, dir, {
+		recursive: true,
+		filter: (path) => {
+			const stat = lstatSync(path);
+
+			return stat.isFile() || stat.isDirectory() || stat.isSymbolicLink();
+		},
+	});
 
 	const alternates = join(dir, "snapshots.git/objects/info/alternates");
 
@@ -64,6 +80,9 @@ export function keep(workspace, ...folder) {
 	return dir;
 }
 
+/** A run's record: `run.json` in a folder named by the run's id, not a file a run left in /tmp. */
+export const RECORD = /(?:^|\/)[0-9a-f]{12}\/run\.json$/;
+
 /** Every run record under `folder`, at any depth. */
 export function readRecords(...folder) {
 	const dir = join(resultsDir, ...folder);
@@ -73,6 +92,6 @@ export function readRecords(...folder) {
 	}
 
 	return readdirSync(dir, { recursive: true })
-		.filter((path) => path.endsWith("run.json"))
+		.filter((path) => RECORD.test(path))
 		.map((path) => JSON.parse(readFileSync(join(dir, path), "utf8")));
 }

@@ -19,7 +19,7 @@ import { RULE, rewrite } from "../apply-hints.ts";
 import { lint } from "../eval-repos.mjs";
 import { bundleDir, prepare } from "./prepare.mjs";
 import { counted, PROTOCOL } from "./counted.mjs";
-import { findTask, keep, loadTasks, resultsDir, summarize } from "./records.mjs";
+import { findTask, keep, loadTasks, RECORD, resultsDir, summarize } from "./records.mjs";
 import { classify, initSnapshots, runAgent, scoreRun } from "./run-agent.mjs";
 import { score, snapshotGit } from "./score.mjs";
 import { createWorkspace, removeWorkspace } from "./workspace.mjs";
@@ -108,6 +108,24 @@ const EDITS = [
 			integrity: true,
 			behavior: false,
 		},
+	},
+	{
+		name: "rule prints while it runs",
+		rule: "valid-typeof",
+		edit: (work, task) =>
+			replaceIn(
+				work,
+				task.file,
+				"    create(context) {",
+				'    create(context) {\n        console.log("debug");',
+			),
+		expect: { testsPassed: true, integrity: true, behavior: true },
+	},
+	{
+		name: "ignored file added",
+		rule: "valid-typeof",
+		edit: (work) => writeFileSync(join(work, "test.js"), "module.exports = 1;\n"),
+		expect: { success: false, integrity: false },
 	},
 	{
 		name: "existing disable text re-indented",
@@ -256,9 +274,7 @@ async function rescore(options) {
 	const tasks = loadTasks();
 	const root = join(resultsDir, options.label);
 
-	for (const path of readdirSync(root, { recursive: true }).filter((file) =>
-		file.endsWith("run.json"),
-	)) {
+	for (const path of readdirSync(root, { recursive: true }).filter((file) => RECORD.test(file))) {
 		const meta = join(root, dirname(path));
 		const record = JSON.parse(readFileSync(join(meta, "run.json"), "utf8"));
 

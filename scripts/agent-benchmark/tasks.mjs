@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { RULE, kindOf, reportedBody, scoreOf } from "../apply-hints.ts";
 import { lint, root, run } from "../eval-repos.mjs";
 import { ARMS } from "./arm-plugin.ts";
-import { baseDir, bundleDir, prepare } from "./prepare.mjs";
+import { baseDir, bundleDir, prepare, SCORING_ENV } from "./prepare.mjs";
 import { createWorkspace, removeWorkspace } from "./workspace.mjs";
 
 export const TASKS_FILE = join(root, "scripts/agent-benchmark/tasks.json");
@@ -85,7 +85,7 @@ export function runTests(dir, rule) {
 			process.execPath,
 			["node_modules/mocha/bin/mocha", "--reporter", "dot", testFile(rule)],
 			dir,
-			{ timeout: TEST_TIMEOUT },
+			{ timeout: TEST_TIMEOUT, env: SCORING_ENV },
 		);
 
 		return { passed: result.status === 0, output: (result.stdout + result.stderr).slice(-2000) };

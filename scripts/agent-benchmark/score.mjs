@@ -1,12 +1,20 @@
 // Scores a finished run from its final tree: did the function reach the max, do the
 // rule's tests pass, did the run stay within the task, and does the rule still behave the
 // same. See "What counts" in docs/designs/agent-benchmark.md.
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "@typescript-eslint/parser";
 import { RULE, countFunctions, scoreOf } from "../apply-hints.ts";
 import { lint, root, run } from "../eval-repos.mjs";
-import { baseDir, benchDir, bundleDir, corpusDir, sha256 } from "./prepare.mjs";
+import {
+	baseDir,
+	benchDir,
+	bundleDir,
+	corpusDir,
+	GIT_ENV,
+	SCORING_ENV,
+	sha256,
+} from "./prepare.mjs";
 import { runTests, testFile } from "./tasks.mjs";
 
 const cacheDir = join(benchDir, "behavior-cache");
@@ -51,6 +59,7 @@ export function snapshotGit(workspace, args) {
 			...args,
 		],
 		workspace.work,
+		{ env: GIT_ENV },
 	);
 
 	if (result.status !== 0) {
@@ -59,6 +68,15 @@ export function snapshotGit(workspace, args) {
 
 	return result.stdout;
 }
+
+/**
+ * Files the snapshots don't hold because ESLint's .gitignore ignores them. A run can still
+ * create one that its tests or the behavior check load, so new ones are listed.
+ */
+export const ignoredFiles = (workspace) =>
+	snapshotGit(workspace, ["ls-files", "--others", "--ignored", "--exclude-standard", "--directory"])
+		.split("\n")
+		.filter(Boolean);
 
 /** Runs the behavior check, computing the original rule's results first if they aren't cached. */
 export function behavior(work, rule) {
@@ -71,14 +89,17 @@ export function behavior(work, rule) {
 			.join("\0"),
 	).slice(0, 16);
 
+	const out = join(work, "..", "behavior.json");
 	let result;
+
+	rmSync(out, { force: true });
 
 	try {
 		result = run(
 			process.execPath,
-			[WORKER, baseDir, work, rule, join(cacheDir, `${rule}-${key}.json`), corpusDir],
+			[WORKER, baseDir, work, rule, join(cacheDir, `${rule}-${key}.json`), corpusDir, out],
 			baseDir,
-			{ timeout: BEHAVIOR_TIMEOUT },
+			{ timeout: BEHAVIOR_TIMEOUT, env: SCORING_ENV },
 		);
 	} catch (error) {
 		return { same: false, error: `${error.code ?? error}: the check didn't finish` };
@@ -92,7 +113,7 @@ export function behavior(work, rule) {
 		};
 	}
 
-	const summary = JSON.parse(result.stdout);
+	const summary = JSON.parse(readFileSync(out, "utf8"));
 
 	return {
 		same: summary.differences.length === 0 && summary.compared === summary.checks,
@@ -130,10 +151,22 @@ export function score(workspace, task) {
 
 	writeFileSync(join(workspace.meta, "final.diff"), diff);
 
-	const outside = changes.filter(
-		({ status, file }) =>
-			file !== task.file && !(status === "A" && /^lib\/rules\/.*\.js$/.test(file)),
-	);
+	const baselineIgnored = join(workspace.meta, "ignored-baseline.json");
+
+	// Runs from before the list was kept have none to compare with.
+	const ignoredAdded = existsSync(baselineIgnored)
+		? ignoredFiles(workspace).filter(
+				(file) => !JSON.parse(readFileSync(baselineIgnored, "utf8")).includes(file),
+			)
+		: [];
+
+	const outside = [
+		...changes.filter(
+			({ status, file }) =>
+				file !== task.file && !(status === "A" && /^lib\/rules\/.*\.js$/.test(file)),
+		),
+		...ignoredAdded.map((file) => ({ status: "I", file })),
+	];
 
 	const targetExists = existsSync(join(workspace.work, task.file));
 

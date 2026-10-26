@@ -2,9 +2,23 @@
 // shuffled with a fixed seed. Before each block the runner checks that the block fits
 // what's left, so a stop always falls at the end of a block. Runs go one at a time, so
 // they can't see or slow each other. See "Running it" in docs/designs/agent-benchmark.md.
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	writeFileSync,
+} from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { prepare, sha256 } from "./prepare.mjs";
+import {
+	bundleHashes,
+	PLUGIN_PATH,
+	prepare,
+	provenance as provenanceOf,
+	sha256,
+} from "./prepare.mjs";
 import { keep, loadTasks, readRecords, resultsDir, summarize } from "./records.mjs";
 import { leaks, runAgent, scoreRun } from "./run-agent.mjs";
 import { random, shuffle, TASKS_FILE } from "./tasks.mjs";
@@ -83,15 +97,69 @@ function fits({ funding, budget, reserve, maxUtilization, estimateFrom, model },
 	};
 }
 
-/** Throws unless the plugins and the harness are the ones the tasks were drawn with. */
-function checkFrozen(provenance) {
-	const frozen = JSON.parse(readFileSync(TASKS_FILE, "utf8")).provenance;
+const frozen = () => JSON.parse(readFileSync(TASKS_FILE, "utf8")).provenance;
 
-	if (JSON.stringify(provenance) !== JSON.stringify(frozen)) {
+/**
+ * Throws unless the plugins and the harness are the ones the tasks were drawn with.
+ * Checked before every run, so a rebuild or a branch switch mid-benchmark stops it.
+ */
+function checkFrozen(provenance = currentProvenance()) {
+	if (JSON.stringify(provenance) !== JSON.stringify(frozen())) {
 		throw new Error(
-			`The plugins or the harness differ from the ones ${TASKS_FILE} was drawn with:\n${JSON.stringify({ now: provenance, frozen }, null, 2)}`,
+			`The plugins or the harness differ from the ones ${TASKS_FILE} was drawn with:\n${JSON.stringify({ now: provenance, frozen: frozen() }, null, 2)}`,
 		);
 	}
+}
+
+const currentProvenance = () => provenanceOf(bundleHashes());
+
+/** Throws unless a run's tree holds its arm's frozen plugin. */
+function checkPlugin(workspace, arm) {
+	const hash = sha256(readFileSync(join(workspace.work, PLUGIN_PATH)));
+
+	if (hash !== frozen().plugins[arm]) {
+		throw new Error(`The run's plugin for arm ${arm} isn't the frozen one: ${hash}`);
+	}
+}
+
+/** What every block under a label must share, so blocks that differ aren't pooled. */
+const blockSettings = (summary) =>
+	JSON.stringify({
+		model: summary.model,
+		arms: summary.arms,
+		tasks: summary.tasks,
+		effort: summary.effort,
+		maxTurns: summary.maxTurns,
+		maxBudgetUsd: summary.maxBudgetUsd,
+		provenance: summary.provenance,
+	});
+
+/** The label's blocks so far, after checking they were all run like the one about to start. */
+function existingBlocks(label, planned) {
+	const blocks = blockNumbers(label).map((number) =>
+		JSON.parse(readFileSync(join(resultsDir, label, `block-${number}`, "block.json"), "utf8")),
+	);
+
+	const different = blocks.filter((block) => blockSettings(block) !== blockSettings(planned));
+
+	if (different.length > 0) {
+		throw new Error(
+			`Block ${different[0].block} of ${label} was run with other settings; use a new label:\n${blockSettings(different[0])}\nnow:\n${blockSettings(planned)}`,
+		);
+	}
+
+	return blocks;
+}
+
+/** Reads the API key, which must be in a folder the sandbox denies the agent. */
+function readKey(file) {
+	const path = realpathSync(file);
+
+	if (!path.startsWith(`${realpathSync(join(homedir(), ".config"))}/`)) {
+		throw new Error(`Keep the key file under ~/.config, which the agent can't read: ${path}`);
+	}
+
+	return readFileSync(path, "utf8").trim();
 }
 
 /**
@@ -102,7 +170,11 @@ async function runCell({ task, arm }, settings, folder) {
 	const records = [];
 
 	for (let attempt = 0; attempt < 2; attempt++) {
+		checkFrozen();
+
 		const run = await runAgent({ ...settings, task, arm });
+
+		checkPlugin(run.workspace, arm);
 
 		scoreRun(run, task);
 
@@ -140,8 +212,7 @@ export async function counted(options) {
 	const tasks = loadTasks().slice(0, options.tasks ? Number(options.tasks) : undefined);
 	const cells = cellsOf(tasks, options.arms.split(","));
 
-	const apiKey =
-		options.funding === "api" ? readFileSync(options["key-file"], "utf8").trim() : undefined;
+	const apiKey = options.funding === "api" ? readKey(options["key-file"]) : undefined;
 
 	const limits = {
 		funding: options.funding,
@@ -160,11 +231,24 @@ export async function counted(options) {
 		...PROTOCOL,
 	};
 
-	const first = Math.max(0, ...blockNumbers(options.label)) + 1;
+	const planned = {
+		model: options.model,
+		arms: options.arms,
+		tasks: tasks.length,
+		...PROTOCOL,
+		provenance,
+	};
+
+	const previous = existingBlocks(options.label, planned);
+	const first = Math.max(0, ...previous.map(({ block }) => block)) + 1;
+
+	// `--blocks` is how many complete blocks the label should end with.
+	const wanted = Number(options.blocks) - previous.filter(({ complete }) => complete).length;
+
 	/** @type {string | undefined} Why no more runs can go, once they can't. */
 	let stopped;
 
-	for (let block = first; block < first + Number(options.blocks) && !stopped; block++) {
+	for (let block = first; block < first + wanted && !stopped; block++) {
 		const check = fits(limits, options.label, cells.length);
 
 		if (!check.ok) {
@@ -182,11 +266,7 @@ export async function counted(options) {
 			block,
 			seed,
 			complete: false,
-			model: options.model,
-			arms: options.arms,
-			tasks: tasks.length,
-			...PROTOCOL,
-			provenance,
+			...planned,
 			order: order.map(({ task, arm }) => `${task.rule}:${arm}`),
 			missing: [],
 		};
