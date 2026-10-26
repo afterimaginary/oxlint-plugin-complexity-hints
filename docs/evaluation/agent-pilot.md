@@ -9,7 +9,7 @@ It's a pilot: one run per function and message, on one kind of task. It shows di
 - **Tasks.** Functions over the max of 15 in ESLint v9.0.0's `lib/rules/`, picked with no model involved. A function qualified when it was the only one over the max in its file, its rule's tests passed, and the tests failed when its body was emptied. 44 qualified; 8 files with more than one function over the max were left out.
 - **Messages.**
   - **A, bare:** SonarJS S3776's wording, "Refactor this function to reduce its Cognitive Complexity from N to the 15 allowed."
-  - **B, this rule:** the message as it ships, with the main contributors and one fix with the score it reaches, under the "guard first" strategy.
+  - **B, this rule:** the message as it shipped at the time, with the main contributors and one fix with the score it reaches, under the "guard first" strategy.
 
   Both were registered as the same rule, at the same path and config, so nothing in the tree told the agent which it had.
 

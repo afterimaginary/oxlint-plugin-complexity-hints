@@ -1,0 +1,5 @@
+{
+	"jsPlugins": [{ "name": "complexity", "specifier": "../../../scripts/strategy-plugin.ts" }],
+	"categories": { "correctness": "off" },
+	"rules": { "complexity/guard-first": ["error", 0] }
+}

@@ -350,8 +350,9 @@ function fallbackText({ kind, line }: Contributor): string {
 }
 
 /**
- * How a fix is chosen when a guard clause and a move both help. The rule uses "guard
- * first"; the others exist to be measured against it (see docs/evaluation/strategies.md).
+ * How a fix is chosen when a guard clause and a move both help. The rule uses "guard if
+ * enough" (ADR-0005); the others are kept to be measured against it (see
+ * docs/evaluation/strategies.md).
  *
  * - "guard first": the guard.
  * - "largest saving": whichever leaves the lower highest score; a tie goes to the guard,
@@ -381,10 +382,9 @@ function bestMove(
 }
 
 /**
- * One concrete change: a guard clause when one saves points, or else move the region
- * that best splits the score, so that both functions end up lower than this one is
- * now, saying what stands in the way. See "Fix" in docs/specs/diagnostics.md. When both
- * help, `strategy` picks one.
+ * One concrete change: a guard clause, or a region to move that best splits the score, so
+ * that both functions end up lower than this one is now, saying what stands in the way.
+ * When both help, `strategy` picks one. See "Fix" in docs/specs/diagnostics.md.
  */
 export function suggestFix(
 	unit: FunctionUnit,
@@ -392,7 +392,7 @@ export function suggestFix(
 	{ total, max }: { total: number; max: number },
 	heaviest: Contributor,
 	scopeManager: ScopeManager,
-	strategy: Strategy = "guard first",
+	strategy: Strategy = "guard if enough",
 ): string {
 	const guard = findGuardClause(increments);
 	// What this one scores once the guard clause is in.

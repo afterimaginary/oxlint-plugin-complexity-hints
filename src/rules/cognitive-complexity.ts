@@ -33,7 +33,7 @@ function readMax(options: readonly unknown[]): number {
 }
 
 /** The rule, choosing fixes by `strategy`; the plugin uses the default. */
-export function createRule(strategy: Strategy = "guard first"): Rule {
+export function createRule(strategy: Strategy = "guard if enough"): Rule {
 	return {
 		meta: {
 			type: "suggestion",
