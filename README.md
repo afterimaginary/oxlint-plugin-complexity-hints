@@ -2,7 +2,7 @@
 
 Keep code written by coding agents easy for people to review. An [Oxlint](https://oxc.rs/docs/guide/usage/linter) rule scores each function's cognitive complexity, and when one goes over the max, its one-line message names a change to make, almost always with the score the function reaches; a checker, [`complexity-hints`](#for-agents), holds the agent only to what its own change is responsible for.
 
-> **Status:** early development. Nothing is published yet, and the API may change.
+> **Status:** early development: the API may change before 1.0.
 
 ## Example
 

@@ -6,7 +6,7 @@
 
 `complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md`, matching `eslint-plugin-sonarjs` except for the documented whitepaper deviations, which differential and fuzz tests check. Over the max, it reports a single-line message, specified in `docs/specs/diagnostics.md`, that names the lines the function spans, the main contributors and one fix with the score it reaches: a guard clause when it alone brings the function to the max, or else whichever of the guard and a region to move into a new function leaves the lower score, with what stands in the way of moving it (ADR-0005). Every hint that states a score is checked against it: `tests/hint-promises.test.ts` applies each fix in the CLI fixtures, and `vp run evaluate-hints` applies all 318 on four pinned open-source repositories, where every one reaches exactly the scores it promised (`docs/evaluation/hints.md`). `vp run simulate-hints` plays the lint loop on the same code to compare how the rule chooses between a guard clause and a move (`docs/evaluation/strategies.md`): "guard if enough" reaches the max in fewer lint rounds than "guard first" (89 against 144 where they differ), at the cost of a few more extracted functions. An agent pilot (`docs/evaluation/agent-pilot.md`) gave Claude Sonnet 5.5 44 ESLint functions under this rule's message and under a bare score: every run succeeded either way, and with this rule's message the changes were about a tenth smaller. It also found that agents often edit through Bash. `complexity-hints` (ADR-0006, `docs/specs/scoped-checker.md`) runs Oxlint on a change and reports only the over-max functions the change touched, blocking when the fix points into the change too. The README's agent setup runs it from a Claude Code `PostToolUse` hook on Edit, Write and Bash (`complexity-hints --claude-code-hook`), gates commits and CI with it, and gives guidance for agent instructions; `install.md` walks an agent through all of it. The README leads with that purpose and the evidence for it; the rule docs and the `recommended` preset are in place.
 
-With this, the "Reviewable agent changes" milestone is done: every hint's promise checked, the hint strategy chosen by measurement, and diagnostics scoped to the change under review. Next is "Launch": the release process is in place (ADR-0007: a GitHub release's tag is the version, and CI publishes through npm's trusted publishing), and what's left is the first publish (#19) and making the repository public (#20).
+With this, the "Reviewable agent changes" milestone is done: every hint's promise checked, the hint strategy chosen by measurement, and diagnostics scoped to the change under review. Next is "Launch": the release process is in place (ADR-0007: a GitHub release's tag is the version, CI stages it through npm's trusted publishing, and a maintainer approves it with 2FA). The repository is public, `main` requires `verify`, and the package exists on npm; what's left is the first release, 0.1.0 (#19).
 
 ## Features
 
@@ -29,12 +29,12 @@ With this, the "Reviewable agent changes" milestone is done: every hint's promis
 
 ## Up Next
 
-1. First npm publish by hand, then trusted publishing for the `release` workflow (#19)
-2. Launch checklist: make the repository public (#20).
+1. Release 0.1.0 (#19)
+2. Launch checklist: set the homepage once the npm page is live (#20).
 
 ## Needs Your Decision
 
-- Launch timing (#20).
+Nothing right now.
 
 ## Notes
 

@@ -19,7 +19,7 @@ DONE WHEN: The project's linter runs with `complexity/cognitive-complexity` on, 
 - [ ] Check that the rule, the checker and the hook work
 - [ ] Report what you did
 
-You must change only what these steps name. Don't fix existing over-max functions, raise the max, or add `oxlint-disable` comments: the point of the setup is that later changes stay within their own scope. The package isn't on npm yet: until its first release, the install step can't find it, so stop there and tell me.
+You must change only what these steps name. Don't fix existing over-max functions, raise the max, or add `oxlint-disable` comments: the point of the setup is that later changes stay within their own scope.
 
 ## Check the project
 
