@@ -12,7 +12,7 @@ Each strategy decides between the guard clause the rule finds and the best regio
 - **Largest saving**: whichever leaves the lower highest score; a tie goes to the guard clause, which moves no code.
 - **Guard if enough**: the guard clause when it brings the function to the max, or else as largest saving.
 
-A strategy that adds how far over the max the function still is would pick the same fix as largest saving, differing only in wording. A mechanical loop doesn't read the wording, so it is left to the agent benchmark (#42).
+A strategy that adds how far over the max the function still is would pick the same fix as largest saving, differing only in wording. A mechanical loop doesn't read the wording, so only an agent could tell them apart; the [agent pilot](agent-pilot.md) didn't test it.
 
 ## Outcomes
 
@@ -76,11 +76,11 @@ Over the 58 of those that every strategy brings to the max:
 
 ## Recommendation
 
-Ship guard if enough (#43), and compare it with guard first with an agent in the loop (#42). Where the strategies part, it reaches the max in fewer lint rounds than guard first on 43 of 58 functions, and never in more: 89 rounds against 144. Guard first still moves 5652 lines into new functions after its guard clauses, against 5949, so suggesting the move straight away mostly saves the rounds the guard clauses took.
+Ship guard if enough (#43). The [agent pilot](agent-pilot.md) gives no reason to keep suggesting a guard clause that isn't enough on its own: given one, agents extracted functions anyway. Where the strategies part, it reaches the max in fewer lint rounds than guard first on 43 of 58 functions, and never in more: 89 rounds against 144. Guard first still moves 5652 lines into new functions after its guard clauses, against 5949, so suggesting the move straight away mostly saves the rounds the guard clauses took.
 
-Against largest saving, it reaches the max in as few edits and lint rounds, and adds 104 functions to 117, because it keeps the guard clause wherever the guard alone is enough. Whether that smaller change is also easier to review is for the agent benchmark to show.
+Against largest saving, it reaches the max in as few edits and lint rounds, and adds 104 functions to 117, because it keeps the guard clause wherever the guard alone is enough. Whether that smaller change is also easier to review would take an agent benchmark on harder tasks than the pilot's (#53).
 
-What it costs, against guard first over these 58: 9 more functions, and the moved code a reader follows into them. Its highest score left is higher than guard first's on 21 of them and lower on 11, though at or under the max either way. The simulation can't weigh these against a round saved; the agent benchmark can, by how many tokens and steps the agent takes and how large the resulting diff is.
+What it costs, against guard first over these 58: 9 more functions, and the moved code a reader follows into them. Its highest score left is higher than guard first's on 21 of them and lower on 11, though at or under the max either way. The simulation can't weigh these against a round saved; an agent in the loop could, by how many tokens and steps it takes and how large its diff is, but the pilot's agents fixed every function in one pass.
 
 ## Not counted
 
