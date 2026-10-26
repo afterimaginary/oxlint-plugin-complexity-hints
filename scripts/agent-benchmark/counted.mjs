@@ -1,13 +1,16 @@
 // Counted runs, in blocks: each block is one run of every task and arm, in an order
 // shuffled with a fixed seed. Before each block the runner checks that the block fits
-// what's left, so a stop always falls at the end of a block and every cell has the same
-// number of runs. See "Running it" in docs/designs/agent-benchmark.md.
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+// what's left, so a stop always falls at the end of a block. Runs go one at a time, so
+// they can't see or slow each other. See "Running it" in docs/designs/agent-benchmark.md.
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { prepare, sha256 } from "./prepare.mjs";
 import { keep, loadTasks, readRecords, resultsDir, summarize } from "./records.mjs";
-import { runAgent, scoreRun } from "./run-agent.mjs";
-import { random, shuffle } from "./tasks.mjs";
+import { leaks, runAgent, scoreRun } from "./run-agent.mjs";
+import { random, shuffle, TASKS_FILE } from "./tasks.mjs";
+
+/** The settings every counted run uses, fixed by the protocol rather than the command line. */
+export const PROTOCOL = { effort: "high", maxTurns: 25, maxBudgetUsd: 0.5 };
 
 /** Leaves room for the block's runs costing more than the runs so far did. */
 const MARGIN = 1.25;
@@ -30,32 +33,34 @@ function blockNumbers(label) {
 }
 
 /** Whether the next block fits, and why not. */
-function fits({ funding, budget, reserve, maxUtilization, estimateFrom }, label, size) {
+function fits({ funding, budget, reserve, maxUtilization, estimateFrom, model }, label, size) {
 	// Only runs the model took part in say what a run costs; a failed request costs nothing.
 	const modelRuns = (folder) =>
-		readRecords(folder).filter((record) => record.outcome.kind === "model");
+		readRecords(folder).filter(
+			(record) => record.outcome.kind === "model" && record.model === model,
+		);
 
 	const records = modelRuns(label);
 
 	// Before the first block, the cost per run comes from the check runs, at the same prices.
-	const sample = records.length > 0 ? records : modelRuns(estimateFrom);
+	const sample = records.length > 0 ? records : estimateFrom ? modelRuns(estimateFrom) : [];
 
 	if (funding === "api") {
+		if (sample.length === 0) {
+			return {
+				ok: false,
+				why: "no runs yet to estimate a block's cost; pass --estimate-from with the label of runs at the same settings",
+			};
+		}
+
 		// Spending counts every run, the service's failures included.
 		const spent = readRecords(label).reduce(
 			(sum, record) => sum + (record.result?.costUsd ?? 0),
 			0,
 		);
 
-		const sampled = sample.reduce((sum, record) => sum + (record.result?.costUsd ?? 0), 0);
-		const mean = sample.length > 0 ? sampled / sample.length : undefined;
-
-		if (mean === undefined) {
-			return {
-				ok: false,
-				why: "no runs yet to estimate a block's cost; run the first block with --budget set high enough for it",
-			};
-		}
+		const mean =
+			sample.reduce((sum, record) => sum + (record.result?.costUsd ?? 0), 0) / sample.length;
 
 		const needed = mean * size * MARGIN;
 
@@ -67,6 +72,7 @@ function fits({ funding, budget, reserve, maxUtilization, estimateFrom }, label,
 
 	// On the subscription, the service reports how much of the week is used.
 	const latest = sample
+		.toSorted((a, b) => a.endedAt.localeCompare(b.endedAt))
 		.flatMap((record) => record.rateLimits ?? [])
 		.filter(({ rateLimitType }) => rateLimitType === "seven_day")
 		.at(-1);
@@ -77,47 +83,89 @@ function fits({ funding, budget, reserve, maxUtilization, estimateFrom }, label,
 	};
 }
 
-/** Runs `jobs` with at most `limit` at a time. */
-async function pool(jobs, limit) {
-	const results = [];
-	let next = 0;
+/** Throws unless the plugins and the harness are the ones the tasks were drawn with. */
+function checkFrozen(provenance) {
+	const frozen = JSON.parse(readFileSync(TASKS_FILE, "utf8")).provenance;
 
-	const worker = async () => {
-		while (next < jobs.length) {
-			const index = next++;
+	if (JSON.stringify(provenance) !== JSON.stringify(frozen)) {
+		throw new Error(
+			`The plugins or the harness differ from the ones ${TASKS_FILE} was drawn with:\n${JSON.stringify({ now: provenance, frozen }, null, 2)}`,
+		);
+	}
+}
 
-			results[index] = await jobs[index]();
+/**
+ * One cell's run, scored and kept: a service failure is run once more with the same
+ * settings, and both are kept. Returns the runs' records, or throws on a harness error.
+ */
+async function runCell({ task, arm }, settings, folder) {
+	const records = [];
+
+	for (let attempt = 0; attempt < 2; attempt++) {
+		const run = await runAgent({ ...settings, task, arm });
+
+		scoreRun(run, task);
+
+		console.log(summarize(run.record));
+
+		// A run whose records hold the key isn't kept, so they can't be published by mistake.
+		if (run.record.keyLeaked || leaks(run.workspace, settings.apiKey)) {
+			run.record.outcome = {
+				kind: "aborted",
+				reason: `the API key appears in the run's records, left in ${run.workspace.dir}`,
+			};
+
+			records.push(run.record);
+
+			break;
 		}
-	};
 
-	await Promise.all(Array.from({ length: limit }, worker));
+		keep(run.workspace, ...folder);
 
-	return results;
+		records.push(run.record);
+
+		if (run.record.outcome.kind !== "infrastructure") {
+			break;
+		}
+	}
+
+	return records;
 }
 
 export async function counted(options) {
 	const provenance = await prepare();
 
-	const tasks = loadTasks().slice(0, Number(options.tasks));
+	checkFrozen(provenance);
+
+	const tasks = loadTasks().slice(0, options.tasks ? Number(options.tasks) : undefined);
 	const cells = cellsOf(tasks, options.arms.split(","));
 
 	const apiKey =
 		options.funding === "api" ? readFileSync(options["key-file"], "utf8").trim() : undefined;
 
-	const settings = {
+	const limits = {
 		funding: options.funding,
 		budget: Number(options.budget),
 		reserve: Number(options.reserve),
 		maxUtilization: Number(options["max-utilization"]),
-		estimateFrom: options["estimate-from"] ?? options.label,
+		estimateFrom: options["estimate-from"],
+		model: options.model,
+	};
+
+	const settings = {
+		model: options.model,
+		funding: options.funding,
+		apiKey,
+		label: options.label,
+		...PROTOCOL,
 	};
 
 	const first = Math.max(0, ...blockNumbers(options.label)) + 1;
-	/** @type {string | undefined} Why the account can't run more, once it can't. */
+	/** @type {string | undefined} Why no more runs can go, once they can't. */
 	let stopped;
 
 	for (let block = first; block < first + Number(options.blocks) && !stopped; block++) {
-		const check = fits(settings, options.label, cells.length);
+		const check = fits(limits, options.label, cells.length);
 
 		if (!check.ok) {
 			console.log(`Not starting block ${block}: ${check.why}`);
@@ -128,70 +176,33 @@ export async function counted(options) {
 		const seed = parseInt(sha256(`${options.label} ${block}`).slice(0, 8), 16);
 		const order = shuffle(cells, random(seed));
 		const folder = [options.label, `block-${block}`];
+		const file = join(resultsDir, ...folder, "block.json");
+
+		const summary = {
+			block,
+			seed,
+			complete: false,
+			model: options.model,
+			arms: options.arms,
+			tasks: tasks.length,
+			...PROTOCOL,
+			provenance,
+			order: order.map(({ task, arm }) => `${task.rule}:${arm}`),
+			missing: [],
+		};
+
+		// Written first, so a block that never finishes says so.
+		keepBlock(file, summary);
 
 		console.log(`Block ${block}: ${order.length} runs. ${check.why}`);
 
-		const attempt = ({ task, arm }) =>
-			runAgent({
-				task,
-				arm,
-				model: options.model,
-				effort: options.effort,
-				funding: options.funding,
-				apiKey,
-				maxTurns: Number(options["max-turns"]),
-				maxBudgetUsd: Number(options["max-budget"]),
-				label: options.label,
-			});
+		stopped = await runBlock(order, settings, folder, summary);
 
-		const finished = await pool(
-			order.map((cell) => async () => {
-				if (stopped) {
-					return [];
-				}
+		summary.complete = !stopped;
 
-				const runs = [await attempt(cell)];
+		summary.stopped = stopped;
 
-				// A service failure is run once more with the same settings; both are kept.
-				if (runs[0].record.outcome.kind === "infrastructure") {
-					runs.push(await attempt(cell));
-				}
-
-				if (
-					runs.some(
-						({ record }) => record.outcome.kind === "stop" || record.outcome.kind === "aborted",
-					)
-				) {
-					stopped = runs.at(-1).record.outcome.reason;
-				}
-
-				return runs.map((run) => ({ ...run, task: cell.task }));
-			}),
-			Number(options.concurrency),
-		);
-
-		for (const run of finished.flat()) {
-			scoreRun(run, run.task);
-
-			console.log(summarize(run.record));
-
-			keep(run.workspace, ...folder);
-		}
-
-		writeFileSync(
-			join(resultsDir, ...folder, "block.json"),
-			JSON.stringify(
-				{
-					block,
-					seed,
-					complete: !stopped,
-					provenance,
-					order: order.map(({ task, arm }) => `${task.rule}:${arm}`),
-				},
-				null,
-				"\t",
-			),
-		);
+		keepBlock(file, summary);
 
 		if (stopped) {
 			console.log(
@@ -199,4 +210,40 @@ export async function counted(options) {
 			);
 		}
 	}
+}
+
+/**
+ * Runs a block's cells in order, noting in `summary` the cells left with no counted run.
+ * Returns why the benchmark has to stop, if it does.
+ */
+async function runBlock(order, settings, folder, summary) {
+	for (const cell of order) {
+		const name = `${cell.task.rule}:${cell.arm}`;
+		let records;
+
+		try {
+			records = await runCell(cell, settings, folder);
+		} catch (error) {
+			return `harness error in ${name}: ${error.stack ?? error}`;
+		}
+
+		const last = records.at(-1).outcome;
+
+		if (last.kind === "stop" || last.kind === "aborted") {
+			return last.reason;
+		}
+
+		// Both attempts were the service's, so the cell has no counted run in this block.
+		if (last.kind !== "model") {
+			summary.missing.push(name);
+		}
+	}
+
+	return undefined;
+}
+
+function keepBlock(file, summary) {
+	mkdirSync(dirname(file), { recursive: true });
+
+	writeFileSync(file, `${JSON.stringify(summary, null, "\t")}\n`);
 }

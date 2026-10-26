@@ -75,15 +75,23 @@ function interleave(tasks, next) {
 
 export const testFile = (rule) => `tests/lib/rules/${rule}.js`;
 
+/** Long enough for any rule's tests, which take seconds; a rule left looping fails. */
+const TEST_TIMEOUT = 5 * 60_000;
+
 /** The rule's own tests in `dir`: whether they pass, and mocha's summary. */
 export function runTests(dir, rule) {
-	const result = run(
-		process.execPath,
-		["node_modules/mocha/bin/mocha", "--reporter", "dot", testFile(rule)],
-		dir,
-	);
+	try {
+		const result = run(
+			process.execPath,
+			["node_modules/mocha/bin/mocha", "--reporter", "dot", testFile(rule)],
+			dir,
+			{ timeout: TEST_TIMEOUT },
+		);
 
-	return { passed: result.status === 0, output: (result.stdout + result.stderr).slice(-2000) };
+		return { passed: result.status === 0, output: (result.stdout + result.stderr).slice(-2000) };
+	} catch (error) {
+		return { passed: false, output: `${error.code ?? error}: the tests didn't finish` };
+	}
 }
 
 /** Over-max diagnostics in lib/rules/, by file, for every arm. */

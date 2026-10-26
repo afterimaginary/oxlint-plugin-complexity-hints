@@ -9,15 +9,16 @@
 //   node scripts/agent-benchmark/benchmark.mjs rescore --label <name> [--rule <rule>]
 //     Scores kept runs again from their snapshots, after a fix to the scoring.
 //   node scripts/agent-benchmark/benchmark.mjs counted --label <name> --model <id> --arms A,B
-//       --tasks <n> --blocks <n> --funding subscription|api [--key-file <path> --budget <usd>]
-//     Runs counted blocks; see "Running it" in the design.
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+//       --blocks <n> --funding subscription|api [--key-file <path> --budget <usd>]
+//       [--estimate-from <label>] [--tasks <n>]
+//     Runs counted blocks, at the protocol's effort and caps; see "Running it" in the design.
+import { readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 import { RULE, rewrite } from "../apply-hints.ts";
 import { lint } from "../eval-repos.mjs";
 import { bundleDir, prepare } from "./prepare.mjs";
-import { counted } from "./counted.mjs";
+import { counted, PROTOCOL } from "./counted.mjs";
 import { findTask, keep, loadTasks, resultsDir, summarize } from "./records.mjs";
 import { classify, initSnapshots, runAgent, scoreRun } from "./run-agent.mjs";
 import { score, snapshotGit } from "./score.mjs";
@@ -90,6 +91,45 @@ const EDITS = [
 				'if (!VALID_TYPES.has(value) && value !== "strnig") {',
 			),
 		expect: { success: false, behavior: false },
+	},
+	{
+		name: "behavior changed where the tests don't look",
+		rule: "key-spacing",
+		edit: (work, task) =>
+			replaceIn(
+				work,
+				task.file,
+				"    create(context) {",
+				"    create(context) {\n        if (context.sourceCode.text.length > 5000) {\n            return {};\n        }",
+			),
+		expect: {
+			success: false,
+			testsPassed: true,
+			integrity: true,
+			behavior: false,
+		},
+	},
+	{
+		name: "existing disable text re-indented",
+		rule: "object-curly-newline",
+		edit: (work, task) =>
+			replaceIn(
+				work,
+				task.file,
+				"*     var obj = { // eslint-disable-line foo",
+				"*       var obj = { // eslint-disable-line foo",
+			),
+		expect: { reachedMax: false, testsPassed: true, integrity: true },
+	},
+	{
+		name: "file left unparseable",
+		rule: "valid-typeof",
+		edit: (work, task) => {
+			const path = join(work, task.file);
+
+			writeFileSync(path, readFileSync(path, "utf8").slice(0, -40));
+		},
+		expect: { success: false, reachedMax: false },
 	},
 	{
 		name: "guard applied, still over the max",
@@ -233,6 +273,19 @@ async function rescore(options) {
 
 			snapshotGit(restored, ["checkout", "-f", "HEAD", "--", "."]);
 
+			// Files the run deleted are still in the fresh tree.
+			for (const file of snapshotGit(restored, [
+				"diff",
+				"--name-only",
+				"--diff-filter=D",
+				"baseline",
+				"HEAD",
+			])
+				.split("\n")
+				.filter(Boolean)) {
+				rmSync(join(workspace.work, file));
+			}
+
 			scoreRun({ record, workspace: restored }, findTask(tasks, record.rule));
 
 			console.log(summarize(record));
@@ -300,9 +353,9 @@ const { positionals, values } = parseArgs({
 		rule: { type: "string" },
 		runs: { type: "string" },
 		model: { type: "string", default: "claude-sonnet-5-5" },
-		effort: { type: "string", default: "high" },
-		"max-turns": { type: "string", default: "100" },
-		"max-budget": { type: "string", default: "5" },
+		effort: { type: "string", default: PROTOCOL.effort },
+		"max-turns": { type: "string", default: String(PROTOCOL.maxTurns) },
+		"max-budget": { type: "string", default: String(PROTOCOL.maxBudgetUsd) },
 		arms: { type: "string", default: "A,B" },
 		tasks: { type: "string" },
 		blocks: { type: "string", default: "1" },
@@ -311,7 +364,6 @@ const { positionals, values } = parseArgs({
 		budget: { type: "string" },
 		reserve: { type: "string", default: "10" },
 		"max-utilization": { type: "string", default: "0.95" },
-		concurrency: { type: "string", default: "3" },
 		"estimate-from": { type: "string" },
 	},
 });

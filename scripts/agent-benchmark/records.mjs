@@ -1,7 +1,7 @@
 // The tasks a benchmark runs, and where its runs' records are kept.
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { benchDir } from "./prepare.mjs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
+import { baseDir, benchDir } from "./prepare.mjs";
 import { TASKS_FILE } from "./tasks.mjs";
 import { removeWorkspace } from "./workspace.mjs";
 
@@ -36,13 +36,28 @@ export function summarize(record) {
 	return `${record.rule} ${record.arm}: ${outcome.kind}, ${verdict}; ${record.result?.turns ?? "?"} turns, $${cost}`;
 }
 
-/** Keeps a run's records under `folder` and drops its tree, which the snapshots can rebuild. */
+/** The base tree's git objects, copied once beside the results, which every snapshot builds on. */
+const baseObjects = join(resultsDir, "base-objects");
+
+/**
+ * Keeps a run's records under `folder` and drops its tree, which the snapshots can rebuild.
+ * The snapshots borrow the base tree's objects from the copy in the results, through a
+ * relative path, so the results folder holds everything and can be moved as a whole.
+ */
 export function keep(workspace, ...folder) {
 	const dir = join(resultsDir, ...folder, workspace.id);
+
+	if (!existsSync(baseObjects)) {
+		cpSync(join(baseDir, ".git/objects"), baseObjects, { recursive: true });
+	}
 
 	mkdirSync(dir, { recursive: true });
 
 	cpSync(workspace.meta, dir, { recursive: true });
+
+	const alternates = join(dir, "snapshots.git/objects/info/alternates");
+
+	writeFileSync(alternates, `${relative(dirname(dirname(alternates)), baseObjects)}\n`);
 
 	removeWorkspace(workspace);
 

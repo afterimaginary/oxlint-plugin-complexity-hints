@@ -2,14 +2,24 @@
 // the task's lint error, with the README's lint hook. Every message and a snapshot after
 // every tool call are kept, then the final tree is scored. See
 // docs/designs/agent-benchmark.md.
-import { appendFileSync, existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import {
+	appendFileSync,
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	renameSync,
+	writeFileSync,
+} from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { root, run } from "../eval-repos.mjs";
 import { baseDir, benchDir, bundleDir } from "./prepare.mjs";
+import { resultsDir } from "./records.mjs";
 import { score, snapshotGit } from "./score.mjs";
-import { createWorkspace } from "./workspace.mjs";
+import { createWorkspace, runsDir } from "./workspace.mjs";
 
 const SDK_VERSION = JSON.parse(
 	readFileSync(join(root, "node_modules/@anthropic-ai/claude-agent-sdk/package.json"), "utf8"),
@@ -47,7 +57,7 @@ const STOP = /credit balance is too low|usage limit|spend limit|out of (?:extra 
  * Code session's among them) don't reach the agent. An API key is passed only when
  * `funding` is "api".
  */
-function environment(funding, apiKey, npmCache) {
+export function environment(funding, apiKey, npmCache) {
 	const env = {
 		PATH: process.env.PATH,
 		HOME: homedir(),
@@ -101,32 +111,41 @@ function confine(work) {
 	};
 }
 
-/** Commits the tree after every tool call, so each step can be measured afterwards. */
+/** Commits the tree if it changed since the last snapshot, and returns the snapshot. */
+function snapshot(workspace, message) {
+	snapshotGit(workspace, ["add", "-A"]);
+
+	const changed = run(
+		"git",
+		[
+			`--git-dir=${join(workspace.meta, "snapshots.git")}`,
+			`--work-tree=${workspace.work}`,
+			"diff",
+			"--cached",
+			"--quiet",
+		],
+		workspace.work,
+	).status;
+
+	if (changed !== 0) {
+		snapshotGit(workspace, ["commit", "-q", "-m", message]);
+	}
+
+	return snapshotGit(workspace, ["rev-parse", "HEAD"]).trim();
+}
+
+/**
+ * Commits the tree after every tool call, failed ones included (a command that edits the
+ * file and then exits non-zero still edited it), so each step can be measured afterwards.
+ */
 function snapshotter(workspace, steps) {
 	return async (input) => {
-		snapshotGit(workspace, ["add", "-A"]);
-
-		const changed = run(
-			"git",
-			[
-				`--git-dir=${join(workspace.meta, "snapshots.git")}`,
-				`--work-tree=${workspace.work}`,
-				"diff",
-				"--cached",
-				"--quiet",
-			],
-			workspace.work,
-		).status;
-
-		if (changed !== 0) {
-			snapshotGit(workspace, ["commit", "-q", "-m", `step ${steps.length + 1}`]);
-		}
-
 		steps.push({
 			at: Date.now(),
 			tool: input.tool_name,
 			input: input.tool_input,
-			snapshot: snapshotGit(workspace, ["rev-parse", "HEAD"]).trim(),
+			failed: input.hook_event_name === "PostToolUseFailure",
+			snapshot: snapshot(workspace, `step ${steps.length + 1}`),
 		});
 
 		return {};
@@ -163,18 +182,102 @@ export function initSnapshots(workspace) {
 	snapshotGit(workspace, ["config", "user.email", "bench@localhost"]);
 }
 
-/** Paths the sandbox keeps Bash from reading: this repository, Claude's config, other runs' plugins. */
+/** `path`, created if need be, with links resolved, as the sandbox compares them. */
+function real(path) {
+	mkdirSync(path, { recursive: true });
+
+	return realpathSync(path);
+}
+
+/**
+ * Paths the sandbox keeps Bash from reading: this repository, Claude's config and the
+ * user's, the plugins, and every other run's tree and results, including the base tree's
+ * sources. The run's own folder is read again through `allowRead`.
+ */
 const denyRead = () => [
 	join(homedir(), "src"),
 	join(homedir(), ".claude"),
+	join(homedir(), ".claude.json"),
+	join(homedir(), ".npmrc"),
 	join(homedir(), "Documents"),
 	// Where the API key file is kept, and other credentials.
 	join(homedir(), ".config"),
 	join(homedir(), ".ssh"),
 	join(tmpdir(), "complexity-hint-eval"),
-	bundleDir,
-	join(benchDir, "behavior-cache"),
+	real(bundleDir),
+	real(join(benchDir, "behavior-cache")),
+	real(join(benchDir, "corpus")),
+	real(resultsDir),
+	real(runsDir),
+	real(join(baseDir, "lib")),
+	real(join(baseDir, "tests")),
 ];
+
+/** The system temp folder; agents write scripts there by fixed names. */
+const SYSTEM_TMP = realpathSync("/tmp");
+
+/** Bash's sandbox for a run: no network, and none of the reads `denyRead` lists but its own folder. */
+export const sandbox = (workspace) => ({
+	enabled: true,
+	failIfUnavailable: true,
+	allowUnsandboxedCommands: false,
+	network: { allowedDomains: [], strictAllowlist: true },
+	filesystem: {
+		denyRead: denyRead(),
+		allowRead: [workspace.dir],
+		// Agents write scripts to /tmp, as they did in the probe; it's allowed explicitly, so
+		// the sandbox's default can't change it, and `collectTmp` clears it between runs.
+		allowWrite: [workspace.npmCache, SYSTEM_TMP],
+	},
+});
+
+/** Top-level entries in the system temp folder. */
+const tmpEntries = () => new Set(readdirSync(SYSTEM_TMP));
+
+/**
+ * Moves what the run left in the system temp folder into its records, so the next run
+ * can't read it: entries that appeared during the run and that its messages name.
+ */
+function collectTmp(before, stream, meta) {
+	const messages = readFileSync(stream, "utf8");
+
+	const left = [...tmpEntries()].filter(
+		(name) => !before.has(name) && messages.includes(`/tmp/${name}`),
+	);
+
+	if (left.length > 0) {
+		mkdirSync(join(meta, "tmp"));
+	}
+
+	for (const name of left) {
+		renameSync(join(SYSTEM_TMP, name), join(meta, "tmp", name));
+	}
+
+	return left;
+}
+
+/** Tool calls, the agent's own lint runs and the hook's, counted from the message stream. */
+function activity(stream) {
+	const messages = readFileSync(stream, "utf8")
+		.split("\n")
+		.filter(Boolean)
+		.map((line) => JSON.parse(line));
+
+	const calls = messages
+		.filter((message) => message.type === "assistant")
+		.flatMap((message) => message.message.content)
+		.filter((block) => block.type === "tool_use");
+
+	return {
+		toolCalls: calls.length,
+		lintRuns: calls.filter(
+			(call) => call.name === "Bash" && /\boxlint\b/.test(call.input.command ?? ""),
+		).length,
+		hookRuns: messages.filter(
+			(message) => message.type === "system" && message.subtype === "hook_response",
+		).length,
+	};
+}
 
 /** Why the session's setup doesn't match the protocol's, if it doesn't. */
 const setupProblems = (init, { expectedKey, model }) =>
@@ -253,10 +356,18 @@ export async function runAgent({
 	const stream = join(workspace.meta, "stream.jsonl");
 	const steps = [];
 
+	writeFileSync(stream, "");
+
 	initSnapshots(workspace);
 
 	const lint = run("npx", ["oxlint", "--format", "agent", task.file], workspace.work);
 	const text = prompt(task, lint.stdout + lint.stderr);
+
+	// The prompt quotes the arm's message exactly as the task records it.
+	if (!text.includes(task.messages[arm])) {
+		throw new Error(`The prompt for ${task.rule}:${arm} doesn't quote the arm's message:\n${text}`);
+	}
+
 	const expectedKey = funding === "api" ? "ANTHROPIC_API_KEY" : "none";
 
 	const record = {
@@ -275,6 +386,8 @@ export async function runAgent({
 		modelsSeen: {},
 		rateLimits: [],
 	};
+
+	const before = tmpEntries();
 
 	const session = query({
 		prompt: text,
@@ -297,16 +410,11 @@ export async function runAgent({
 			env: environment(funding, apiKey, workspace.npmCache),
 			maxTurns,
 			maxBudgetUsd,
-			sandbox: {
-				enabled: true,
-				failIfUnavailable: true,
-				allowUnsandboxedCommands: false,
-				network: { allowedDomains: [], strictAllowlist: true },
-				filesystem: { denyRead: denyRead(), allowWrite: [workspace.npmCache] },
-			},
+			sandbox: sandbox(workspace),
 			hooks: {
 				PreToolUse: [{ hooks: [confine(workspace.work)] }],
 				PostToolUse: [{ hooks: [snapshotter(workspace, steps)] }],
+				PostToolUseFailure: [{ hooks: [snapshotter(workspace, steps)] }],
 			},
 		},
 	});
@@ -315,7 +423,14 @@ export async function runAgent({
 
 	record.endedAt = new Date().toISOString();
 
+	// The tree as the session left it, whatever its last step was, is what's scored.
+	record.finalSnapshot = snapshot(workspace, "final");
+
 	record.steps = steps.length;
+
+	Object.assign(record, activity(stream));
+
+	record.tmpFiles = collectTmp(before, stream, workspace.meta);
 
 	writeFileSync(join(workspace.meta, "steps.json"), JSON.stringify(steps, null, "\t"));
 
@@ -334,12 +449,8 @@ export async function runAgent({
 		};
 	}
 
-	// The key must never reach a record; a run whose records hold it stops the benchmark.
 	record.keyLeaked =
-		apiKey !== undefined &&
-		["stream.jsonl", "steps.json"].some((file) =>
-			readFileSync(join(workspace.meta, file), "utf8").includes(apiKey),
-		);
+		apiKey !== undefined && (leaks(workspace, apiKey) || JSON.stringify(record).includes(apiKey));
 
 	record.outcome = record.keyLeaked
 		? { kind: "aborted", reason: "the API key appears in the run's records" }
@@ -348,6 +459,20 @@ export async function runAgent({
 	writeFileSync(join(workspace.meta, "run.json"), JSON.stringify(record, null, "\t"));
 
 	return { record, workspace };
+}
+
+/**
+ * Whether the API key appears in any of the run's records. It must never reach one; a run
+ * whose records hold it stops the benchmark and isn't kept.
+ */
+export function leaks(workspace, apiKey) {
+	if (apiKey === undefined) {
+		return false;
+	}
+
+	return readdirSync(workspace.meta, { recursive: true, withFileTypes: true })
+		.filter((entry) => entry.isFile() && !entry.parentPath.includes("snapshots.git"))
+		.some((entry) => readFileSync(join(entry.parentPath, entry.name), "utf8").includes(apiKey));
 }
 
 /**

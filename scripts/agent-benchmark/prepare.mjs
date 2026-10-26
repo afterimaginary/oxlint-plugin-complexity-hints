@@ -3,7 +3,15 @@
 // the tree and link its `node_modules`, so this is done once. See
 // docs/designs/agent-benchmark.md.
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	cpSync,
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { build } from "vite/rolldown";
@@ -14,9 +22,36 @@ export const benchDir = process.env.AGENT_BENCH_DIR ?? join(tmpdir(), "complexit
 export const baseDir = join(benchDir, "eslint");
 export const bundleDir = join(benchDir, "plugins");
 
+/** Prettier's src/, which the behavior check runs rules on besides ESLint's own code. */
+export const corpusDir = join(benchDir, "corpus");
+
 const here = join(root, "scripts/agent-benchmark");
 const lockfile = join(here, "eslint-package-lock.json");
 const eslint = repositories.find(({ name }) => name === "ESLint");
+const prettier = repositories.find(({ name }) => name === "Prettier");
+
+/**
+ * The files a counted run's code is in, outside `src/` (which the plugin hashes cover).
+ * The analysis and the command line aren't among them, since they don't change a run.
+ */
+const HARNESS = [
+	"scripts/agent-benchmark/arm-plugin.ts",
+	"scripts/agent-benchmark/behavior-worker.cjs",
+	"scripts/agent-benchmark/counted.mjs",
+	"scripts/agent-benchmark/eslint-package-lock.json",
+	"scripts/agent-benchmark/prepare.mjs",
+	"scripts/agent-benchmark/records.mjs",
+	"scripts/agent-benchmark/run-agent.mjs",
+	"scripts/agent-benchmark/score.mjs",
+	"scripts/agent-benchmark/tasks.mjs",
+	"scripts/agent-benchmark/workspace.mjs",
+	"scripts/apply-hints.ts",
+	"scripts/eval-repos.mjs",
+];
+
+const SDK = JSON.parse(
+	readFileSync(join(root, "node_modules/@anthropic-ai/claude-agent-sdk/package.json"), "utf8"),
+).version;
 
 /** The Oxlint the hook and the agent run, the version this repository is tested with. */
 const OXLINT = JSON.parse(readFileSync(join(root, "package.json"), "utf8")).devDependencies.oxlint;
@@ -46,13 +81,23 @@ function step(command, args, cwd) {
 	return result.stdout;
 }
 
+/** What each arm's bundle exports: the bare rule, or this rule under the arm's strategy. */
+const entryOf = ({ strategy }) => {
+	const from = (file) => JSON.stringify(join(root, file));
+
+	return strategy
+		? `import { createRule } from ${from("src/rules/cognitive-complexity.ts")};\nimport { plugin } from ${from("scripts/agent-benchmark/arm-plugin.ts")};\nexport default plugin(createRule(${JSON.stringify(strategy)}));\n`
+		: `import { bare, plugin } from ${from("scripts/agent-benchmark/arm-plugin.ts")};\nexport default plugin(bare());\n`;
+};
+
 /** Each arm's plugin as one ES module with no imports but Node's, so nothing in a run's tree names the arm. */
 async function bundle() {
 	mkdirSync(bundleDir, { recursive: true });
 
 	const hashes = {};
 
-	for (const { arm } of ARMS) {
+	for (const entry of ARMS) {
+		const { arm } = entry;
 		const file = join(bundleDir, `${arm}.mjs`);
 
 		await build({
@@ -62,10 +107,7 @@ async function bundle() {
 				{
 					name: "arm-entry",
 					resolveId: (id) => (id === "arm-entry" ? id : undefined),
-					load: (id) =>
-						id === "arm-entry"
-							? `import { armPlugin } from ${JSON.stringify(join(here, "arm-plugin.ts"))};\nexport default armPlugin(${JSON.stringify(arm)});\n`
-							: undefined,
+					load: (id) => (id === "arm-entry" ? entryOf(entry) : undefined),
 				},
 			],
 			output: { file, format: "esm", minify: true },
@@ -78,9 +120,54 @@ async function bundle() {
 	return hashes;
 }
 
+/**
+ * Throws unless the base tree is exactly its one commit with its dependencies in place,
+ * so a tree the system's temp cleanup has partly removed isn't silently used.
+ */
+function verifyBase() {
+	const status = step("git", ["status", "--porcelain"], baseDir);
+	const subject = step("git", ["log", "-1", "--format=%s"], baseDir).trim();
+
+	if (
+		status.trim() !== "" ||
+		subject !== `ESLint ${eslint.tag}` ||
+		!existsSync(join(baseDir, "node_modules/mocha/bin/mocha")) ||
+		!existsSync(join(baseDir, "node_modules/.bin/oxlint"))
+	) {
+		throw new Error(
+			`The base tree at ${baseDir} isn't intact (${status.trim().split("\n").length} changes); delete it and run again to rebuild it.`,
+		);
+	}
+}
+
+/** Prettier's src/ at its pinned commit, for the behavior check. */
+function corpus() {
+	if (existsSync(corpusDir)) {
+		return;
+	}
+
+	const archive = join(benchDir, "prettier.tar");
+	const staging = `${corpusDir}.partial`;
+
+	rmSync(staging, { recursive: true, force: true });
+
+	mkdirSync(staging);
+
+	step("git", ["archive", "-o", archive, prettier.commit, "src"], checkout(prettier));
+
+	step("tar", ["-xf", archive, "-C", staging, "--strip-components=1"], benchDir);
+
+	rmSync(archive);
+
+	// Renamed only once it's whole, so a corpus that exists is complete.
+	renameSync(staging, corpusDir);
+}
+
 /** ESLint's tree with Oxlint added as a dev dependency, installed from the committed lockfile, and committed as one commit. */
 function base() {
 	if (existsSync(join(baseDir, ".git"))) {
+		verifyBase();
+
 		return;
 	}
 
@@ -156,9 +243,13 @@ function base() {
 export function provenance(hashes) {
 	return {
 		eslint: { tag: eslint.tag, commit: eslint.commit },
+		corpus: { tag: prettier.tag, commit: prettier.commit },
 		lockfile: sha256(readFileSync(lockfile)),
 		oxlint: OXLINT,
+		sdk: SDK,
+		hook: sha256(JSON.stringify(SETTINGS)),
 		plugins: hashes,
+		harness: sha256(HARNESS.map((file) => sha256(readFileSync(join(root, file)))).join("\n")),
 	};
 }
 
@@ -166,6 +257,8 @@ export async function prepare() {
 	mkdirSync(benchDir, { recursive: true });
 
 	base();
+
+	corpus();
 
 	return provenance(await bundle());
 }

@@ -1,6 +1,7 @@
 // The plugin each arm of the agent benchmark lints with, bundled once per arm by
 // scripts/agent-benchmark/prepare.mjs. Every arm registers the same rule id, so only the
-// message tells them apart.
+// message tells them apart. A bundle's entry imports only `bare` or `createRule`, so the
+// arm table below, with its names and titles, stays out of every run's tree.
 import type { CreateOnceRule, Diagnostic, Plugin, Rule } from "@oxlint/plugins";
 import type { Strategy } from "../../src/hint.ts";
 import { createRule } from "../../src/rules/cognitive-complexity.ts";
@@ -16,7 +17,7 @@ export const ARMS = [
  * The rule with SonarJS S3776's message in place of this rule's: the score and the max,
  * and nothing about where the score comes from or how to lower it.
  */
-function bare(): Rule {
+export function bare(): Rule {
 	const rule = createRule() as CreateOnceRule;
 
 	return {
@@ -39,12 +40,8 @@ function bare(): Rule {
 	};
 }
 
-/** The plugin for `arm`. */
-export function armPlugin(arm: (typeof ARMS)[number]["arm"]): Plugin {
-	const { strategy } = ARMS.find((entry) => entry.arm === arm)! as { strategy?: Strategy };
-
-	return {
-		meta: { name: "complexity" },
-		rules: { "cognitive-complexity": strategy ? createRule(strategy) : bare() },
-	};
-}
+/** A plugin holding `rule` under the id every arm uses. */
+export const plugin = (rule: Rule): Plugin => ({
+	meta: { name: "complexity" },
+	rules: { "cognitive-complexity": rule },
+});

@@ -3,17 +3,43 @@
 // same. See "What counts" in docs/designs/agent-benchmark.md.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { parse } from "@typescript-eslint/parser";
 import { RULE, countFunctions, scoreOf } from "../apply-hints.ts";
 import { lint, root, run } from "../eval-repos.mjs";
-import { baseDir, benchDir, bundleDir } from "./prepare.mjs";
-import { runTests } from "./tasks.mjs";
+import { baseDir, benchDir, bundleDir, corpusDir, sha256 } from "./prepare.mjs";
+import { runTests, testFile } from "./tasks.mjs";
 
 const cacheDir = join(benchDir, "behavior-cache");
+const WORKER = join(root, "scripts/agent-benchmark/behavior-worker.cjs");
 
 /** Any arm's plugin scores the same; B's is the one the rest of the scoring reads. */
 const SCORER = join(bundleDir, "B.mjs");
 
-const DISABLE = /(?:eslint|oxlint)-disable/;
+/** The slowest rule's check, indent's, takes minutes; a rule left looping fails. */
+const BEHAVIOR_TIMEOUT = 30 * 60_000;
+
+const DIRECTIVE = /^\s*(?:eslint|oxlint)-disable/;
+
+/** Disable directives in `source`: comments that start with one, not text that mentions one. */
+function directives(source) {
+	try {
+		return parse(source, { comment: true, range: true, sourceType: "module" }).comments.filter(
+			({ value }) => DIRECTIVE.test(value),
+		).length;
+	} catch {
+		// A file that doesn't parse can't succeed anyway; count anything that looks like one.
+		return source.match(/(?:\/\/|\/\*)\s*(?:eslint|oxlint)-disable/g)?.length ?? 0;
+	}
+}
+
+/** How many functions `source` declares, or undefined if it doesn't parse. */
+function functionsIn(source, file) {
+	try {
+		return countFunctions(source, file);
+	} catch {
+		return undefined;
+	}
+}
 
 /** Git in the run's snapshot repository, over its working tree. */
 export function snapshotGit(workspace, args) {
@@ -38,17 +64,25 @@ export function snapshotGit(workspace, args) {
 export function behavior(work, rule) {
 	mkdirSync(cacheDir, { recursive: true });
 
-	const result = run(
-		process.execPath,
-		[
-			join(root, "scripts/agent-benchmark/behavior-worker.cjs"),
+	// The original's results depend on the worker, the rule and its tests, so the cache does too.
+	const key = sha256(
+		[WORKER, join(baseDir, "lib/rules", `${rule}.js`), join(baseDir, testFile(rule))]
+			.map((file) => readFileSync(file, "utf8"))
+			.join("\0"),
+	).slice(0, 16);
+
+	let result;
+
+	try {
+		result = run(
+			process.execPath,
+			[WORKER, baseDir, work, rule, join(cacheDir, `${rule}-${key}.json`), corpusDir],
 			baseDir,
-			work,
-			rule,
-			join(cacheDir, `${rule}.json`),
-		],
-		baseDir,
-	);
+			{ timeout: BEHAVIOR_TIMEOUT },
+		);
+	} catch (error) {
+		return { same: false, error: `${error.code ?? error}: the check didn't finish` };
+	}
 
 	if (result.status !== 0) {
 		return {
@@ -96,8 +130,6 @@ export function score(workspace, task) {
 
 	writeFileSync(join(workspace.meta, "final.diff"), diff);
 
-	const added = diff.split("\n").filter((line) => line.startsWith("+") && !line.startsWith("+++"));
-
 	const outside = changes.filter(
 		({ status, file }) =>
 			file !== task.file && !(status === "A" && /^lib\/rules\/.*\.js$/.test(file)),
@@ -117,14 +149,37 @@ export function score(workspace, task) {
 		]),
 	];
 
+	const read = (dir, file) =>
+		existsSync(join(dir, file)) ? readFileSync(join(dir, file), "utf8") : undefined;
+
+	// Directives added to any file the run wrote; moving an existing one doesn't count.
+	const disableComments = changes
+		.filter(({ status }) => status !== "D")
+		.reduce((sum, { file }) => {
+			const before = read(baseDir, file);
+
+			return (
+				sum +
+				Math.max(0, directives(read(workspace.work, file)) - (before ? directives(before) : 0))
+			);
+		}, 0);
+
 	const integrity = {
-		ok: outside.length === 0 && !added.some((line) => DISABLE.test(line)) && targetExists,
+		ok: outside.length === 0 && disableComments === 0 && targetExists,
 		outside: outside.map(({ status, file }) => `${status} ${file}`),
-		disableComments: added.filter((line) => DISABLE.test(line)).length,
+		disableComments,
 	};
 
+	// Oxlint reports a file it can't parse with no scores, so parsing is checked on its own.
+	const unparsed = sources.filter(
+		(file) => functionsIn(read(workspace.work, file), file) === undefined,
+	);
+
 	const remaining = sources.length > 0 ? scores(workspace.work, sources) : [];
-	const reachedMax = targetExists && remaining.every((value) => value <= 15);
+
+	const reachedMax =
+		targetExists && unparsed.length === 0 && remaining.every((value) => value <= 15);
+
 	const tests = runTests(workspace.work, task.rule);
 
 	const behaves =
@@ -132,14 +187,23 @@ export function score(workspace, task) {
 			? behavior(workspace.work, task.rule)
 			: { same: false, skipped: true };
 
-	const numstat = snapshotGit(workspace, ["diff", "--numstat", "-w", "baseline", "HEAD"])
-		.trim()
-		.split("\n")
-		.filter(Boolean)
-		.map((line) => line.split("\t"));
+	/** Lines added and removed, with or without whitespace-only changes. */
+	const lines = (...flags) => {
+		const rows = snapshotGit(workspace, ["diff", "--numstat", ...flags, "baseline", "HEAD"])
+			.trim()
+			.split("\n")
+			.filter(Boolean)
+			.map((line) => line.split("\t"));
 
-	const functions = (text) => countFunctions(text, task.file);
-	const before = readFileSync(join(baseDir, task.file), "utf8");
+		return {
+			added: rows.reduce((sum, [plus]) => sum + Number(plus || 0), 0),
+			removed: rows.reduce((sum, [, minus]) => sum + Number(minus || 0), 0),
+		};
+	};
+
+	const ignoringWhitespace = lines("-w");
+	const withWhitespace = lines();
+	const before = functionsIn(read(baseDir, task.file), task.file);
 
 	return {
 		success: reachedMax && tests.passed && integrity.ok && behaves.same,
@@ -147,18 +211,23 @@ export function score(workspace, task) {
 		testsPassed: tests.passed,
 		testOutput: tests.passed ? undefined : tests.output,
 		integrity,
+		unparsed,
 		behavior: behaves,
 		diff: {
 			files: changes.length,
-			added: numstat.reduce((sum, [plus]) => sum + Number(plus || 0), 0),
-			removed: numstat.reduce((sum, [, minus]) => sum + Number(minus || 0), 0),
-			functionsAdded: sources.reduce((sum, file) => {
-				const path = join(workspace.work, file);
-				const after = functions(readFileSync(path, "utf8"));
-
-				return sum + after - (file === task.file ? functions(before) : 0);
-			}, 0),
-			highestScoreLeft: Math.max(0, ...remaining),
+			...ignoringWhitespace,
+			withWhitespace,
+			functionsAdded:
+				unparsed.length > 0
+					? undefined
+					: sources.reduce(
+							(sum, file) =>
+								sum +
+								functionsIn(read(workspace.work, file), file) -
+								(file === task.file ? before : 0),
+							0,
+						),
+			highestScoreLeft: unparsed.length > 0 ? undefined : Math.max(0, ...remaining),
 		},
 	};
 }

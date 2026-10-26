@@ -1,9 +1,11 @@
 // Compares an edited ESLint rule with the original beyond what its tests assert: every
-// option set the rule's test file uses, run on every test case's code and on ESLint's own
-// lib/ and tests/fixtures/. Run by scripts/agent-benchmark/score.mjs as
-// `node behavior-worker.cjs <base> <work> <rule> <cache>`, with ESLint's Linter from the
-// base tree. The original's results are computed once and kept in <cache>. Prints a JSON
-// summary.
+// option set the rule's test file uses, run on every test case's code, on ESLint's own
+// lib/ and tests/fixtures/, and on a corpus ESLint doesn't lint itself with (Prettier's
+// src/), where rules ESLint enforces on its own code still find things to report. Run by
+// scripts/agent-benchmark/score.mjs as
+// `node behavior-worker.cjs <base> <work> <rule> <cache> <corpus>`, with ESLint's Linter
+// from the base tree. Code that doesn't parse is left out, since no rule runs on it. The
+// original's results are computed once and kept in <cache>. Prints a JSON summary.
 "use strict";
 
 const crypto = require("node:crypto");
@@ -11,7 +13,7 @@ const fs = require("node:fs");
 const Module = require("node:module");
 const path = require("node:path");
 
-const [base, work, rule, cache] = process.argv.slice(2);
+const [base, work, rule, cache, corpus] = process.argv.slice(2);
 const { Linter } = require(path.join(base, "lib/linter"));
 
 /** Stop comparing after this many differences; one is enough to fail. */
@@ -40,6 +42,7 @@ function readTests() {
 
 				samples.push({
 					name: `test case ${samples.length + 1}`,
+					kind: "test",
 					code,
 					filename,
 					languageOptions: { ...this.languageOptions, ...languageOptions },
@@ -85,18 +88,45 @@ function* files(dir) {
 }
 
 function fileSamples() {
-	return ["lib", "tests/fixtures"].flatMap((dir) =>
+	const eslint = ["lib", "tests/fixtures"].flatMap((dir) =>
 		[...files(path.join(base, dir))].map((file) => {
 			const name = path.relative(base, file);
 
 			return {
 				name,
+				kind: "corpus",
 				code: fs.readFileSync(file, "utf8"),
 				filename: name,
 				languageOptions: { sourceType: name.endsWith(".mjs") ? "module" : "script" },
 			};
 		}),
 	);
+
+	// Prettier's sources are ES modules throughout.
+	const prettier = [...files(corpus)].map((file) => {
+		const name = path.join("prettier", path.relative(corpus, file));
+
+		return {
+			name,
+			kind: "corpus",
+			code: fs.readFileSync(file, "utf8"),
+			filename: name,
+			languageOptions: { sourceType: "module" },
+		};
+	});
+
+	return [...eslint, ...prettier];
+}
+
+/** Whether `sample` parses under its own options, with no rules on. */
+function parses(linter, sample) {
+	return !linter
+		.verify(
+			sample.code,
+			{ files: ["**/*"], languageOptions: { ecmaVersion: "latest", ...sample.languageOptions } },
+			sample.filename ?? "sample.js",
+		)
+		.some(({ fatal }) => fatal);
 }
 
 /** What the rule reports on a sample, as comparable text, or the error it throws. */
@@ -133,8 +163,9 @@ function outcome(linter, ruleModule, options, sample) {
 }
 
 const { sets, samples } = readTests();
-const all = [...samples, ...fileSamples()];
 const linter = new Linter({ configType: "flat" });
+const candidates = [...samples, ...fileSamples()];
+const all = candidates.filter((sample) => parses(linter, sample));
 const checks = all.flatMap((sample) => sets.map((options) => ({ sample, options })));
 
 /**
@@ -151,7 +182,10 @@ if (!fs.existsSync(cache)) {
 		digest(outcome(linter, original, options, sample)),
 	);
 
-	fs.writeFileSync(cache, JSON.stringify(outcomes));
+	// Written whole, then renamed, so a check running at the same time never reads part of it.
+	fs.writeFileSync(`${cache}.${process.pid}`, JSON.stringify(outcomes));
+
+	fs.renameSync(`${cache}.${process.pid}`, cache);
 }
 
 const expected = JSON.parse(fs.readFileSync(cache, "utf8"));
@@ -183,13 +217,19 @@ for (const [index, { sample, options }] of checks.entries()) {
 	}
 }
 
+/** Checks of `kind` where the original rule reported something. */
+const reporting = (kind) =>
+	expected.filter((hash, index) => hash.startsWith("+") && checks[index].sample.kind === kind)
+		.length;
+
 process.stdout.write(
 	JSON.stringify({
 		optionSets: sets.length,
 		samples: all.length,
+		unparsed: candidates.length - all.length,
 		checks: checks.length,
 		compared,
-		reporting: expected.filter((hash) => hash.startsWith("+")).length,
+		reporting: { test: reporting("test"), corpus: reporting("corpus") },
 		differences,
 	}),
 );

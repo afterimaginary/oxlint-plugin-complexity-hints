@@ -43,6 +43,7 @@ export function createWorkspace(arm) {
 		dir,
 		work,
 		meta,
+		npmCache,
 	};
 }
 
