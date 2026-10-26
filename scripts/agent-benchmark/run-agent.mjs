@@ -51,6 +51,8 @@ function environment(funding, apiKey, npmCache) {
 		SHELL: process.env.SHELL,
 		TMPDIR: tmpdir(),
 		CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1",
+		// Keeps the API key, when there is one, out of the agent's commands and the hooks.
+		CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: "1",
 		CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
 		DISABLE_AUTOUPDATER: "1",
 		npm_config_update_notifier: "false",
@@ -161,6 +163,9 @@ const denyRead = () => [
 	join(homedir(), "src"),
 	join(homedir(), ".claude"),
 	join(homedir(), "Documents"),
+	// Where the API key file is kept, and other credentials.
+	join(homedir(), ".config"),
+	join(homedir(), ".ssh"),
 	join(tmpdir(), "complexity-hint-eval"),
 	bundleDir,
 	join(benchDir, "behavior-cache"),
@@ -281,8 +286,9 @@ export async function runAgent({
 			persistSession: false,
 			includeHookEvents: true,
 			systemPrompt: { type: "preset", preset: "claude_code" },
-			permissionMode: "bypassPermissions",
-			allowDangerouslySkipPermissions: true,
+			// The scrub above rules out bypassing permissions, so the tools are approved by name.
+			permissionMode: "default",
+			allowedTools: TOOLS,
 			env: environment(funding, apiKey, workspace.npmCache),
 			maxTurns,
 			maxBudgetUsd,
@@ -323,7 +329,16 @@ export async function runAgent({
 		};
 	}
 
-	record.outcome = classify(record);
+	// The key must never reach a record; a run whose records hold it stops the benchmark.
+	record.keyLeaked =
+		apiKey !== undefined &&
+		["stream.jsonl", "steps.json"].some((file) =>
+			readFileSync(join(workspace.meta, file), "utf8").includes(apiKey),
+		);
+
+	record.outcome = record.keyLeaked
+		? { kind: "aborted", reason: "the API key appears in the run's records" }
+		: classify(record);
 
 	writeFileSync(join(workspace.meta, "run.json"), JSON.stringify(record, null, "\t"));
 
