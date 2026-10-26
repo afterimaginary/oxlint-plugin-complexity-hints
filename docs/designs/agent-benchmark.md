@@ -52,7 +52,7 @@ Every arm registers the same rule, `complexity/cognitive-complexity`, under the 
 
   Only the tree's project settings load.
 
-- **Environment.** The session's environment is built from nothing, so nothing from the shell that starts it reaches the agent. An API key is passed only on API-funded runs. The run checks the session's reported key source, model and tools before it starts, and aborts if any differ.
+- **Environment.** The session's environment is built from nothing, so nothing from the shell that starts it reaches the agent. An API key is passed only on API-funded runs, and Claude Code's credential scrub (`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`) removes it from the agent's commands and the hooks. The scrub rules out bypassing permissions, so the six tools are approved by name. The run checks the session's reported key source, model and tools before it starts, and aborts if any differ; a run whose records contain the key stops the benchmark.
 - **Isolation.**
   - Bash runs in Claude Code's sandbox, with no network and no way to leave it. Reads of this repository and Claude's config are denied.
   - The file tools are denied any path outside the tree.
@@ -122,19 +122,28 @@ Cost and lines changed are averaged over **all** runs, so a run that gives up ea
 
 **Stages:**
 
-1. **Build.** Done, and free.
-2. **Check runs on the subscription.** These size the caps and confirm the hooks, the sandbox and the records.
+1. **Build.** Done.
+2. **Check runs.** 18 runs on the subscription confirmed the hooks, the sandbox and the records, and found bugs in the harness that are fixed. A probe block on the API, A and B on all 44 tasks with Sonnet, set the caps. None of these runs count.
 3. **Freeze.** Commit the protocol, the tasks, the caps and the bundle hashes.
 4. **Counted runs.**
 
-**Blocks.** Counted runs go in blocks, each one run of every cell, shuffled within the block with a fixed seed. Blocks run in this order:
+**Caps.** 25 turns and $0.50 per run. In the probe the most any run took was 7 turns and $0.11, so a cap stops only a run that has gone wrong.
 
-1. Sonnet A and B, three blocks;
-2. Sonnet C;
-3. Haiku A and B;
-4. further Sonnet blocks.
+**Blocks.** Counted runs go in blocks, each one run of every cell, shuffled within the block with a fixed seed. Sonnet's blocks hold A and B on every task and C on the split tasks, 96 runs, so C runs under the same conditions as the B it's compared with. Haiku's blocks hold A and B. The runs planned:
 
-Before each block, the runner continues only if the block's cost fits what is left, at the observed mean cost per run plus 25%. Running out of budget therefore always stops at the end of a block.
+| Model      | Blocks | Runs | About |
+| ---------- | -----: | ---: | ----: |
+| Sonnet 5.5 |      5 |  480 |   $22 |
+| Haiku 5.5  |      3 |  264 |    $2 |
+
+Before each block, the runner continues only if the block's cost fits what is left, at the observed mean cost per run plus 25%. Running out of budget therefore always stops at the end of a block. A block that stops part-way, for an account error such as running out of credit, isn't counted.
+
+## What the probe showed
+
+These are the uncounted probe's numbers, recorded here because they shaped the plan, not as results.
+
+- **Success is at the ceiling.** Every one of the 88 runs succeeded, under both arms. The counted runs are unlikely to separate the arms on success, so the claim rests on cost and lines changed, as the analysis already allows.
+- **Agents mostly edit through Bash.** Sonnet often rewrote the file with one script and ran `npx oxlint` and the tests itself, so the hook, which runs after Edit and Write, fired in only some runs. The hint reaches the agent through the prompt and through the lint runs it starts. The snapshots record every step either way.
 
 ## Limits
 
