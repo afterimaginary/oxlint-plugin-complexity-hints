@@ -43,3 +43,4 @@ Every module uses Node built-ins only, so the package keeps no runtime dependenc
 - One Oxlint install and one config, found from the current directory, lint every changed file. In a monorepo, files of another package are linted with this package's config. Running from that package, or `--oxlint`, is the way around it.
 - The checker reads the rule's message, so a change to the wording of the span or of a fix's target has to change `scope.ts` too. The message tests in `tests/checker.test.ts` fail when they drift apart.
 - Submodules aren't followed: the parent repository's diff shows a submodule as one entry.
+- The change is everything in the working tree since the base, whoever made it. Agents editing one checkout at once each see the others' edits as part of the change, so one can be blocked by another's work, or catch it mid-edit. Give each parallel agent its own worktree; the commit or CI gate then checks the combined change.
