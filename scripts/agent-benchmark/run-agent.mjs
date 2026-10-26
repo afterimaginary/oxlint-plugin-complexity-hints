@@ -325,13 +325,23 @@ export async function runAgent({
 
 	record.outcome = classify(record);
 
+	writeFileSync(join(workspace.meta, "run.json"), JSON.stringify(record, null, "\t"));
+
+	return { record, workspace };
+}
+
+/**
+ * Scores a finished run whose result is the model's, and saves its record. Kept apart from
+ * the run, since the behavior check is slow and runs at the same time would wait on it.
+ */
+export function scoreRun({ record, workspace }, task) {
 	if (record.outcome.kind === "model") {
 		record.score = score(workspace, task);
 	}
 
 	writeFileSync(join(workspace.meta, "run.json"), JSON.stringify(record, null, "\t"));
 
-	return { record, workspace };
+	return record;
 }
 
 /**

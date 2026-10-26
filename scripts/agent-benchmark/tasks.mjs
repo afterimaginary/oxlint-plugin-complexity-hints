@@ -25,7 +25,7 @@ const BANDS = [
 const bandOf = (score) => BANDS.findLast(({ lowest }) => score >= lowest).band;
 
 /** A small seeded generator (mulberry32), so the draw is the same on every machine. */
-function random(seed) {
+export function random(seed) {
 	let state = seed;
 
 	return () => {
@@ -39,7 +39,7 @@ function random(seed) {
 	};
 }
 
-function shuffle(items, next) {
+export function shuffle(items, next) {
 	const shuffled = [...items];
 
 	for (let i = shuffled.length - 1; i > 0; i--) {

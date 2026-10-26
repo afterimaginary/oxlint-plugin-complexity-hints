@@ -5,59 +5,20 @@
 //   node scripts/agent-benchmark/benchmark.mjs check --label <name> --runs <rule>:<arm>,...
 //       [--model <id>] [--effort <level>] [--max-turns <n>] [--max-budget <usd>]
 //     Runs the listed task and arm pairs on the subscription, one at a time.
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+//   node scripts/agent-benchmark/benchmark.mjs counted --label <name> --model <id> --arms A,B
+//       --tasks <n> --blocks <n> --funding subscription|api [--key-file <path> --budget <usd>]
+//     Runs counted blocks; see "Running it" in the design.
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { RULE, rewrite } from "../apply-hints.ts";
 import { lint } from "../eval-repos.mjs";
-import { benchDir, bundleDir, prepare } from "./prepare.mjs";
-import { initSnapshots, runAgent } from "./run-agent.mjs";
+import { bundleDir, prepare } from "./prepare.mjs";
+import { counted } from "./counted.mjs";
+import { findTask, keep, loadTasks, summarize } from "./records.mjs";
+import { initSnapshots, runAgent, scoreRun } from "./run-agent.mjs";
 import { score, snapshotGit } from "./score.mjs";
-import { TASKS_FILE } from "./tasks.mjs";
 import { createWorkspace, removeWorkspace } from "./workspace.mjs";
-
-export const resultsDir = join(benchDir, "results");
-
-export function loadTasks() {
-	const { split, same } = JSON.parse(readFileSync(TASKS_FILE, "utf8"));
-
-	return [...split, ...same];
-}
-
-const findTask = (tasks, rule) => {
-	const task = tasks.find((candidate) => candidate.rule === rule);
-
-	if (!task) {
-		throw new Error(`No task for ${rule}`);
-	}
-
-	return task;
-};
-
-/** One line per run, for the terminal. */
-function summarize({ record }) {
-	const { score: result, outcome } = record;
-	const cost = record.result?.costUsd?.toFixed(3) ?? "?";
-
-	const verdict = result
-		? `${result.success ? "success" : "fail"} (max ${result.reachedMax}, tests ${result.testsPassed}, integrity ${result.integrity.ok}, behavior ${result.behavior.same}) left ${result.diff.highestScoreLeft}, +${result.diff.added}/-${result.diff.removed}`
-		: outcome.reason;
-
-	return `${record.rule} ${record.arm}: ${outcome.kind}, ${verdict}; ${record.result?.turns ?? "?"} turns, $${cost}`;
-}
-
-/** Keeps a run's records and drops its tree, which the snapshots can rebuild. */
-function keep(workspace, label) {
-	const dir = join(resultsDir, label, workspace.id);
-
-	mkdirSync(dir, { recursive: true });
-
-	cpSync(workspace.meta, dir, { recursive: true });
-
-	removeWorkspace(workspace);
-
-	return dir;
-}
 
 async function check(options) {
 	await prepare();
@@ -67,8 +28,10 @@ async function check(options) {
 	for (const pair of options.runs.split(",")) {
 		const [rule, arm] = pair.split(":");
 
+		const task = findTask(tasks, rule);
+
 		const outcome = await runAgent({
-			task: findTask(tasks, rule),
+			task,
 			arm,
 			model: options.model,
 			effort: options.effort,
@@ -78,7 +41,9 @@ async function check(options) {
 			label: options.label,
 		});
 
-		console.log(summarize(outcome));
+		scoreRun(outcome, task);
+
+		console.log(summarize(outcome.record));
 
 		keep(outcome.workspace, options.label);
 	}
@@ -219,9 +184,19 @@ const { positionals, values } = parseArgs({
 		effort: { type: "string", default: "high" },
 		"max-turns": { type: "string", default: "100" },
 		"max-budget": { type: "string", default: "5" },
+		arms: { type: "string", default: "A,B" },
+		tasks: { type: "string" },
+		blocks: { type: "string", default: "1" },
+		funding: { type: "string", default: "subscription" },
+		"key-file": { type: "string" },
+		budget: { type: "string" },
+		reserve: { type: "string", default: "10" },
+		"max-utilization": { type: "string", default: "0.95" },
+		concurrency: { type: "string", default: "3" },
+		"estimate-from": { type: "string" },
 	},
 });
 
-const commands = { selftest, check };
+const commands = { selftest, check, counted };
 
 await commands[positionals[0]](values);
