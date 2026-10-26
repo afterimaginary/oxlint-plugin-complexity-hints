@@ -19,6 +19,9 @@
 		"type": "git",
 		"url": "git+https://github.com/afterimaginary/oxlint-plugin-complexity-hints.git"
 	},
+	"bin": {
+		"complexity-hints": "./dist/checker/cli.mjs"
+	},
 	"files": [
 		"dist",
 		"recommended.json"

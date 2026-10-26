@@ -5,6 +5,8 @@ import { execFileSync } from "node:child_process";
 const expected = [
 	"LICENSE",
 	"README.md",
+	"dist/checker/cli.d.mts",
+	"dist/checker/cli.mjs",
 	"dist/index.d.mts",
 	"dist/index.mjs",
 	"dist/recommended.d.mts",

@@ -25,12 +25,20 @@ export default defineConfig({
 		"*": "vp check --fix",
 	},
 	pack: {
-		entry: ["src/index.ts", "src/recommended.ts"],
+		entry: ["src/index.ts", "src/recommended.ts", "src/checker/cli.ts"],
 		deps: { resolveDepSubpath: true },
 		dts: {
 			generator: "tsgo",
 		},
-		exports: true,
+		exports: {
+			// The checker is a command, not a module to import.
+			bin: { "complexity-hints": "./src/checker/cli.ts" },
+			customExports(exports) {
+				delete exports["./checker/cli"];
+
+				return exports;
+			},
+		},
 		hooks: {
 			// The preset for `.oxlintrc.json`, read back from the typed export just built, so a
 			// rebuild in watch mode writes the edited preset too.

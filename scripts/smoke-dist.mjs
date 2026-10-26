@@ -1,7 +1,8 @@
 // Loads the built package with plain `node`, without Vite+, checks that the plugin
 // registers its rule and that both forms of the preset agree, then runs the rule
-// through Oxlint on the same Node. CI runs it on the oldest Node that `engines.node`
-// allows, passing that version so a different `node` on PATH can't pass in its place.
+// through Oxlint and starts the checker's bin on the same Node. CI runs it on the
+// oldest Node that `engines.node` allows, passing that version so a different `node` on
+// PATH can't pass in its place.
 import { deepStrictEqual, equal, ok } from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -67,5 +68,14 @@ try {
 } finally {
 	rmSync(work, { recursive: true, force: true });
 }
+
+// The checker's bin starts on this Node.
+const help = spawnSync(process.execPath, [join(root, "dist/checker/cli.mjs"), "--help"], {
+	encoding: "utf8",
+});
+
+equal(help.status, 0, help.stderr);
+
+ok(help.stdout.startsWith("Usage: complexity-hints"), help.stdout);
 
 console.log(`Built package loads and runs on Node ${process.versions.node}.`);
