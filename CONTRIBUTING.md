@@ -22,6 +22,7 @@ Installing also sets up the git hooks: the pre-commit hook formats and lints sta
 | `vp run ready`          | Format check, lint, type check and tests. Run it before opening a pull request.                                                              |
 | `vp run verify`         | `ready`, the build, and checks on the built package. CI runs it on every pull request.                                                       |
 | `vp run evaluate-hints` | Runs the rule over pinned open-source repositories and rewrites `docs/evaluation/hints.md`. Needs the network; refresh it when hints change. |
+| `vp run simulate-hints` | Plays the lint loop on the same repositories under each hint strategy and rewrites `docs/evaluation/strategies.md`. Needs the network.       |
 | `vp test`               | Tests only.                                                                                                                                  |
 | `vp check --fix`        | Format and apply safe lint fixes.                                                                                                            |
 
@@ -41,6 +42,18 @@ A failure prints the seed, a `path` and the shrunk program. Add that program to 
 - Add or update tests for any change in scoring or diagnostics.
 - Use [Conventional Commits](https://www.conventionalcommits.org/) for the pull request title, e.g. `fix(rule): count nested ternaries once`.
 - Fill in the pull request template, including what you ran to verify the change.
+
+## Releasing
+
+A maintainer publishes a GitHub release from `main`, and the tag is the version:
+
+```bash
+gh release create v0.1.0 --target main --generate-notes
+```
+
+The tag has to be a plain `vX.Y.Z` on a commit in `main`; anything else fails before publishing. The `release` workflow sets the version from the tag, runs `verify` and publishes to npm with provenance, through npm's trusted publishing, so no token is stored. `package.json` stays at `0.0.0` in the repository. The release notes GitHub generates from the merged pull requests are the changelog.
+
+npm only lets a package that already exists trust a workflow, so the first time, a maintainer publishes the `0.0.0` placeholder by hand with `vp pm publish`, adds `release.yml` as the package's trusted publisher on npmjs.com, and creates the first release within two days, which npm requires of a new trusted publisher.
 
 ## License
 

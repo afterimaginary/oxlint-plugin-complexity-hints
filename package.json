@@ -3,11 +3,18 @@
 	"version": "0.0.0",
 	"description": "Keep code written by coding agents easy to review: an Oxlint cognitive complexity rule with single-line fix hints, and a checker that keeps them within the change",
 	"keywords": [
+		"ai",
+		"claude-code",
+		"code-quality",
+		"code-review",
+		"coding-agents",
 		"cognitive-complexity",
 		"complexity",
 		"lint",
+		"linter",
 		"oxlint",
-		"oxlint-plugin"
+		"oxlint-plugin",
+		"sonarjs"
 	],
 	"homepage": "https://github.com/afterimaginary/oxlint-plugin-complexity-hints#readme",
 	"bugs": {
@@ -52,7 +59,6 @@
 		"@types/node": "^26.6.5",
 		"@typescript-eslint/parser": "8.72.0",
 		"@typescript/native-preview": "npm:typescript@^7.0.2",
-		"bumpp": "^12.3.0",
 		"eslint": "10.13.0",
 		"eslint-plugin-sonarjs": "4.2.2",
 		"fast-check": "^4.10.2",

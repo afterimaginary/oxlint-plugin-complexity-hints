@@ -140,3 +140,5 @@ The diagnostic is reported where `eslint-plugin-sonarjs` reports it: at a declar
 How the hints do on real code, including whether each fix reaches the scores it promises, is in the [hint evaluation](../evaluation/hints.md), and how the choice between a guard clause and a move affects the rounds to reach the max is in the [strategy simulation](../evaluation/strategies.md).
 
 The rule has no autofix and no suggestions: lowering a score takes judgement about names and boundaries that a mechanical fix can't make safely.
+
+The ADRs cited above are in [docs/decisions/](../decisions/).
