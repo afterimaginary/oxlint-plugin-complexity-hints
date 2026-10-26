@@ -1,12 +1,18 @@
 # oxlint-plugin-complexity-hints
 
-A cognitive complexity rule for [Oxlint](https://oxc.rs/docs/guide/usage/linter), with single-line diagnostics written for AI coding agents running a lint loop.
+Keep code written by coding agents easy for people to review. An [Oxlint](https://oxc.rs/docs/guide/usage/linter) rule scores each function's cognitive complexity, a measure of how hard it is to read. When a function goes over the max, its one-line message names a change to make, almost always with the score the function reaches. A checker, [`complexity-hints`](#for-agents), reports only what the agent's own change is responsible for, so the agent isn't pulled into code outside it.
 
 > **Status:** early development. Nothing is published yet, and the API may change.
 
+What the evaluations show so far:
+
+- **The hints keep their promise.** On ESLint, Prettier, Vite and Excalidraw, each of the 318 fixes that states a score was applied mechanically, and every one reached exactly that score ([hint evaluation](docs/evaluation/hints.md)).
+- **Following them reaches the max.** Playing the lint loop with the hints alone, applied one at a time, brings 301 of the 319 over-max functions in those codebases to the max; the rest reach a point where the hint gives only a general direction ([simulation](docs/evaluation/strategies.md)).
+- **In a pilot, the agent made smaller changes with them.** Claude Sonnet 5.5 fixed 44 over-max ESLint functions once with this rule's message, as it shipped then, and once with a bare score. Every run succeeded either way, and with this rule's message the changes were about a tenth smaller: 78.5 lines changed on average against 86.8. With one run per function, that's a direction, not an effect size ([agent pilot](docs/evaluation/agent-pilot.md)).
+
 ## Why
 
-Cognitive complexity measures how hard a function is to read: each `if`, loop or `catch` adds a point, plus one more for each level it is nested. Scores follow SonarSource's [Cognitive Complexity](https://www.sonarsource.com/docs/CognitiveComplexity.pdf) and match `eslint-plugin-sonarjs`, so they are the numbers SonarQube users already know.
+Every function an agent changes still has to be reviewed by people, and the more complex a function, the longer people tend to take to understand it ([Muñoz Barón et al., 2020](https://arxiv.org/abs/2007.12520)). Cognitive complexity measures how hard a function is to read: each `if`, loop or `catch` adds a point, plus one more for each level it is nested. Scores follow SonarSource's [Cognitive Complexity](https://www.sonarsource.com/docs/CognitiveComplexity.pdf) and match `eslint-plugin-sonarjs`, so they are the numbers SonarQube users already know. It's a proxy, with the [limits](#limits) that implies.
 
 Oxlint gives a plugin's diagnostic one line: no help text, no docs URL. A bare "complexity 20 > 15" leaves an agent guessing which part to change, so this rule's message names the main contributors and one concrete change, with the score the function reaches once it's made.
 
@@ -48,7 +54,7 @@ export function shippingCost(order, rates) {
 src/shipping.js:1:17: error complexity(cognitive-complexity): Function 'shippingCost' at lines 1-27 has cognitive complexity 20, over the max of 15; main contributors: 'if' at line 15 (+4, nested 3 deep), 'if' at line 6 (+3, nested 2 deep), 'for...of' at line 14 (+3, nested 2 deep); fix: move lines 6-18 (the body of the 'if' at line 5) into a new function; it reassigns 'total', which the code around it reads, so have it return the new 'total' and assign it from the call; this one drops to 6 and the new one scores 8.
 ```
 
-On the open-source codebases in the [hint evaluation](docs/evaluation/hints.md), every fix that states a score, whether a guard clause or a move into a new function, reached exactly that score once it was made. Once the agent makes the change, the next run scores the function again and suggests the next one.
+Once the agent makes the change, the next run scores the function again and suggests the next one.
 
 ## Install
 
@@ -192,7 +198,7 @@ By default, a function the change touches isn't blocked when its fix points at l
 
 ## Limits
 
-- **Cognitive complexity is a proxy.** Across about 24,000 ratings of 427 snippets, it correlates with how long people take to understand code and how understandable they rate it, with mixed results for whether they understand it correctly ([Muñoz Barón et al., 2020](https://arxiv.org/abs/2007.12520)). It predicts understandability about as well as older measures such as lines of code and cyclomatic complexity, not better ([Lavazza et al., 2023](https://doi.org/10.1016/j.jss.2022.111561)). A function under the max isn't necessarily easy to read, and one over it isn't always worth changing.
+- **Cognitive complexity is a proxy.** Across about 24,000 understandability evaluations of 427 snippets, it correlates with how long people take to understand code and how understandable they rate it, with mixed results for whether they understand it correctly ([Muñoz Barón et al., 2020](https://arxiv.org/abs/2007.12520)). It predicts understandability about as well as older measures such as lines of code and cyclomatic complexity, not better ([Lavazza et al., 2023](https://doi.org/10.1016/j.jss.2022.111561)). A function under the max isn't necessarily easy to read, and one over it isn't always worth changing.
 - **Moving code has a cost.** Moving a region into a new function leaves both functions scoring less than the original, but the reader now follows the logic across two of them. A guard clause has no such reading cost, so the rule suggests one whenever it alone brings the function to the max.
 - **The score is checked, not the behavior.** The hint evaluation checks that each fix reaches the scores it states and still parses. Whether the change preserves behavior is up to the agent and the project's tests.
 - **The agent setup targets Claude Code.** The hook and the instructions in [For agents](#for-agents) are tested only with Claude Code.

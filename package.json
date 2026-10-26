@@ -1,7 +1,7 @@
 {
 	"name": "oxlint-plugin-complexity-hints",
 	"version": "0.0.0",
-	"description": "Cognitive complexity rule for Oxlint, with single-line diagnostics aimed at AI coding agents",
+	"description": "Keep code written by coding agents easy to review: an Oxlint cognitive complexity rule with single-line fix hints, and a checker that keeps them within the change",
 	"keywords": [
 		"cognitive-complexity",
 		"complexity",

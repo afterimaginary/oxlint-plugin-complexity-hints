@@ -4,9 +4,9 @@
 
 ## Where We Are
 
-`complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md`, matching `eslint-plugin-sonarjs` except for the documented whitepaper deviations, which differential and fuzz tests check. Over the max, it reports a single-line message, specified in `docs/specs/diagnostics.md`, that names the lines the function spans, the main contributors and one fix with the score it reaches: a guard clause when it alone brings the function to the max, or else whichever of the guard and a region to move into a new function leaves the lower score, with what stands in the way of moving it (ADR-0005). Every hint that states a score is checked against it: `tests/hint-promises.test.ts` applies each fix in the CLI fixtures, and `vp run evaluate-hints` applies all 318 on four pinned open-source repositories, where every one reaches exactly the scores it promised (`docs/evaluation/hints.md`). `vp run simulate-hints` plays the lint loop on the same code to compare how the rule chooses between a guard clause and a move (`docs/evaluation/strategies.md`): "guard if enough" reaches the max in fewer lint rounds than "guard first" (89 against 144 where they differ), at the cost of a few more extracted functions. An agent pilot (`docs/evaluation/agent-pilot.md`) gave Claude Sonnet 5.5 44 ESLint functions under this rule's message and under a bare score: every run succeeded either way, and with this rule's message the changes were about a tenth smaller. It also found that agents often edit through Bash. `complexity-hints` (ADR-0006, `docs/specs/scoped-checker.md`) runs Oxlint on a change and reports only the over-max functions the change touched, blocking when the fix points into the change too. The README's agent setup runs it from a Claude Code `PostToolUse` hook on Edit, Write and Bash, gates commits and CI with it, and gives guidance for agent instructions. The README, the rule docs and the `recommended` preset are in place.
+`complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md`, matching `eslint-plugin-sonarjs` except for the documented whitepaper deviations, which differential and fuzz tests check. Over the max, it reports a single-line message, specified in `docs/specs/diagnostics.md`, that names the lines the function spans, the main contributors and one fix with the score it reaches: a guard clause when it alone brings the function to the max, or else whichever of the guard and a region to move into a new function leaves the lower score, with what stands in the way of moving it (ADR-0005). Every hint that states a score is checked against it: `tests/hint-promises.test.ts` applies each fix in the CLI fixtures, and `vp run evaluate-hints` applies all 318 on four pinned open-source repositories, where every one reaches exactly the scores it promised (`docs/evaluation/hints.md`). `vp run simulate-hints` plays the lint loop on the same code to compare how the rule chooses between a guard clause and a move (`docs/evaluation/strategies.md`): "guard if enough" reaches the max in fewer lint rounds than "guard first" (89 against 144 where they differ), at the cost of a few more extracted functions. An agent pilot (`docs/evaluation/agent-pilot.md`) gave Claude Sonnet 5.5 44 ESLint functions under this rule's message and under a bare score: every run succeeded either way, and with this rule's message the changes were about a tenth smaller. It also found that agents often edit through Bash. `complexity-hints` (ADR-0006, `docs/specs/scoped-checker.md`) runs Oxlint on a change and reports only the over-max functions the change touched, blocking when the fix points into the change too. The README's agent setup runs it from a Claude Code `PostToolUse` hook on Edit, Write and Bash, gates commits and CI with it, and gives guidance for agent instructions. The README leads with that purpose and the evidence for it; the rule docs and the `recommended` preset are in place.
 
-The diagnostic text is what sets this plugin apart, so the next milestone, "Reviewable agent changes", makes it hold up: every hint's promise checked, the hint strategy chosen by measurement, and diagnostics scoped to the change under review.
+With this, the "Reviewable agent changes" milestone is done: every hint's promise checked, the hint strategy chosen by measurement, and diagnostics scoped to the change under review. Next is "Launch": a release process with npm provenance (#19), then making the repository public (#20).
 
 ## Features
 
@@ -21,15 +21,16 @@ The diagnostic text is what sets this plugin apart, so the next milestone, "Revi
 
 ## Recently Done
 
+- README, package and repository descriptions lead with reviewable agent changes and the evaluations' results (#46)
 - README agent setup: a `PostToolUse` hook on Edit, Write and Bash running `complexity-hints`, the commit and CI gate, and guidance for agent instructions (#45)
 - `complexity-hints`, a checker that reports only what a change is responsible for, recorded as ADR-0006 (#44)
 - The fix hint suggests a guard clause only when it alone reaches the max, recorded as ADR-0005 (#43)
 - Agent pilot: this rule's message against a bare score with Claude Sonnet 5.5, harness kept at the tag `agent-benchmark-pilot` (#42)
-- Hint strategies compared by simulating the lint loop; "guard if enough" recommended (#41)
 
 ## Up Next
 
-1. Lead the README with reviewable agent changes (#46)
+1. Release process and npm publishing with provenance (#19)
+2. Launch checklist: make the repository public (#20).
 
 ## Needs Your Decision
 
