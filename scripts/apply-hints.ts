@@ -763,6 +763,22 @@ function reportOffset(source: string, diagnostic: Diagnostic): number {
 	);
 }
 
+/** How many functions `source` declares, of any kind. */
+export const countFunctions = (source: string, file: string): number =>
+	[...nodesOf(parseFile(source, file))].filter(({ type }) => FUNCTIONS.has(type)).length;
+
+/** The range of the body of the function `diagnostic` reports, if it's found. */
+export function reportedBody(source: string, diagnostic: Diagnostic): [number, number] | undefined {
+	const offset = reportOffset(source, diagnostic);
+
+	// The last match is the innermost, since `nodesOf` visits parents first.
+	const unit = [...nodesOf(parseFile(source, diagnostic.filename))].findLast(
+		(node) => FUNCTIONS.has(node.type) && isReported(node, offset),
+	);
+
+	return (unit?.["body"] as Node | undefined)?.range;
+}
+
 /**
  * `diagnostic`'s hint applied to `source`, its file's text, unless it promises no score.
  * A move or helper's new function is called `name`.

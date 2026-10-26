@@ -1,0 +1,722 @@
+{
+	"seed": 20261025,
+	"provenance": {
+		"eslint": {
+			"tag": "v9.0.0",
+			"commit": "e0cbc50179adac1670f4e0bd9093387a51f4f42a"
+		},
+		"lockfile": "8af5fc2e4e0ff17d29a44cfd527756a24364a459a84c23b4fe571d9354dd3806",
+		"oxlint": "1.83.0",
+		"plugins": {
+			"A": "f7ecf945da133bdb82c5b9886a7b80bdd3a6460f46282215a9f1c2756dc5f27a",
+			"B": "1f5d55e7b233a3be0d757ce4a76639efe4d15f4c402f3bf5e3ef959f7e9c3cb9",
+			"C": "5fd8dc818312e52508f2686176aaa4fb77a3f8f5d045794dba1660837a8fe2dd"
+		}
+	},
+	"split": [
+		{
+			"rule": "key-spacing",
+			"file": "lib/rules/key-spacing.js",
+			"line": 442,
+			"label": "Function 'report'",
+			"score": 35,
+			"band": "over 30",
+			"firstHint": "guard",
+			"split": true,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 35 to the 15 allowed.",
+				"B": "Function 'report' has cognitive complexity 35, over the max of 15; main contributors: 2 '&&' at lines 445-449 (+4), 4 'else' at lines 472-496 (+4), 'if' at line 470 (+3, nested 2 deep); fix: invert the 'if' at line 445 into a guard clause that returns early, so its body moves up a level; this one drops to 24.",
+				"C": "Function 'report' has cognitive complexity 35, over the max of 15; main contributors: 2 '&&' at lines 445-449 (+4), 4 'else' at lines 472-496 (+4), 'if' at line 470 (+3, nested 2 deep); fix: move lines 451-509 (the body of the 'if' at line 445) into a new function; this one drops to 5 and the new one scores 19."
+			}
+		},
+		{
+			"rule": "valid-typeof",
+			"file": "lib/rules/valid-typeof.js",
+			"line": 90,
+			"label": "Method 'UnaryExpression'",
+			"score": 26,
+			"band": "21-30",
+			"firstHint": "guard",
+			"split": true,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.",
+				"B": "Method 'UnaryExpression' has cognitive complexity 26, over the max of 15; main contributors: '?:' at line 98 (+4, nested 3 deep), 'if' at line 100 (+4, nested 3 deep), '?:' at line 106 (+4, nested 3 deep); fix: invert the 'if' at line 91 into a guard clause that returns early, so its body moves up a level; this one drops to 20.",
+				"C": "Method 'UnaryExpression' has cognitive complexity 26, over the max of 15; main contributors: '?:' at line 98 (+4, nested 3 deep), 'if' at line 100 (+4, nested 3 deep), '?:' at line 106 (+4, nested 3 deep); fix: move lines 95-119 (the body of the 'if' at line 94) into a new function; this one drops to 4 and the new one scores 12."
+			}
+		},
+		{
+			"rule": "accessor-pairs",
+			"file": "lib/rules/accessor-pairs.js",
+			"line": 232,
+			"label": "Function 'checkList'",
+			"score": 41,
+			"band": "over 30",
+			"firstHint": "guard",
+			"split": true,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 41 to the 15 allowed.",
+				"B": "Function 'checkList' has cognitive complexity 41, over the max of 15; main contributors: '?:' at line 250 (+5, nested 4 deep), '?:' at line 251 (+5, nested 4 deep), 'if' at line 249 (+4, nested 3 deep); fix: invert the 'if' at line 239 into a guard clause that continues to the next iteration early, so its body moves up a level; this one drops to 33.",
+				"C": "Function 'checkList' has cognitive complexity 41, over the max of 15; main contributors: '?:' at line 250 (+5, nested 4 deep), '?:' at line 251 (+5, nested 4 deep), 'if' at line 249 (+4, nested 3 deep); fix: move lines 242-263 (the body of the 'if' at line 239) into a new function; it reassigns 'found', which the code around it reads, so have it return the new 'found' and assign it from the call; this one drops to 10 and the new one scores 15."
+			}
+		},
+		{
+			"rule": "semi-spacing",
+			"file": "lib/rules/semi-spacing.js",
+			"line": 140,
+			"label": "Function 'checkSemicolonSpacing'",
+			"score": 25,
+			"band": "21-30",
+			"firstHint": "guard",
+			"split": true,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.",
+				"B": "Function 'checkSemicolonSpacing' has cognitive complexity 25, over the max of 15; main contributors: 'if' at line 177 (+4, nested 3 deep), 'if' at line 195 (+4, nested 3 deep), 'if' at line 143 (+3, nested 2 deep); fix: invert the 'if' at line 141 into a guard clause that returns early, so its body moves up a level; this one drops to 18.",
+				"C": "Function 'checkSemicolonSpacing' has cognitive complexity 25, over the max of 15; main contributors: 'if' at line 177 (+4, nested 3 deep), 'if' at line 195 (+4, nested 3 deep), 'if' at line 143 (+3, nested 2 deep); fix: move lines 176-207 (the body of the 'if' at line 175) into a new function; this one drops to 13 and the new one scores 6."
+			}
+		},
+		{
+			"rule": "no-restricted-exports",
+			"file": "lib/rules/no-restricted-exports.js",
+			"line": 109,
+			"label": "Function 'checkExportedName'",
+			"score": 23,
+			"band": "21-30",
+			"firstHint": "guard",
+			"split": true,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed.",
+				"B": "Function 'checkExportedName' has cognitive complexity 23, over the max of 15; main contributors: 4 '&&' at lines 123-144 (+5), 'if' at line 143 (+4, nested 3 deep), 'if' at line 123 (+3, nested 2 deep); fix: invert the 'if' at line 121 into a guard clause that returns early, so its body moves up a level; this one drops to 18.",
+				"C": "Function 'checkExportedName' has cognitive complexity 23, over the max of 15; main contributors: 4 '&&' at lines 123-144 (+5), 'if' at line 143 (+4, nested 3 deep), 'if' at line 123 (+3, nested 2 deep); fix: move lines 131-152 (the 'else' branch at line 130) into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 12 and the new one scores 8."
+			}
+		},
+		{
+			"rule": "no-implicit-globals",
+			"file": "lib/rules/no-implicit-globals.js",
+			"line": 86,
+			"label": "Callback passed to 'forEach'",
+			"score": 20,
+			"band": "16-20",
+			"firstHint": "guard",
+			"split": true,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed.",
+				"B": "Callback passed to 'forEach' has cognitive complexity 20, over the max of 15; main contributors: '?:' at line 110 (+4, nested 3 deep), '?:' at line 96 (+3, nested 2 deep), 'if' at line 104 (+3, nested 2 deep); fix: invert the 'if' at line 101 into a guard clause that returns early, so its body moves up a level; this one drops to 17.",
+				"C": "Callback passed to 'forEach' has cognitive complexity 20, over the max of 15; main contributors: '?:' at line 110 (+4, nested 3 deep), '?:' at line 96 (+3, nested 2 deep), 'if' at line 104 (+3, nested 2 deep); fix: move lines 102-113 (the body of the 'if' at line 101) into a new function; this one drops to 9 and the new one scores 8."
+			}
+		},
+		{
+			"rule": "grouped-accessor-pairs",
+			"file": "lib/rules/grouped-accessor-pairs.js",
+			"line": 147,
+			"label": "Function 'checkList'",
+			"score": 51,
+			"band": "over 30",
+			"firstHint": "guard",
+			"split": true,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 51 to the 15 allowed.",
+				"B": "Function 'checkList' has cognitive complexity 51, over the max of 15; main contributors: '?:' at line 165 (+5, nested 4 deep), '?:' at line 166 (+5, nested 4 deep), 3 '&&' at lines 154-196 (+4); fix: invert the 'if' at line 154 into a guard clause that continues to the next iteration early, so its body moves up a level; this one drops to 43.",
+				"C": "Function 'checkList' has cognitive complexity 51, over the max of 15; main contributors: '?:' at line 165 (+5, nested 4 deep), '?:' at line 166 (+5, nested 4 deep), 3 '&&' at lines 154-196 (+4); fix: move lines 157-178 (the body of the 'if' at line 154) into a new function; it reassigns 'found', which the code around it reads, so have it return the new 'found' and assign it from the call; this one drops to 20 and the new one scores 15."
+			}
+		},
+		{
+			"rule": "for-direction",
+			"file": "lib/rules/for-direction.js",
+			"line": 106,
+			"label": "Method 'ForStatement'",
+			"score": 29,
+			"band": "21-30",
+			"firstHint": "guard",
+			"split": true,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed.",
+				"B": "Method 'ForStatement' has cognitive complexity 29, over the max of 15; main contributors: '?:' at line 121 (+4, nested 3 deep), '?:' at line 123 (+4, nested 3 deep), 'if' at line 129 (+4, nested 3 deep); fix: invert the 'if' at line 108 into a guard clause that returns early, so its body moves up a level; this one drops to 22.",
+				"C": "Method 'ForStatement' has cognitive complexity 29, over the max of 15; main contributors: '?:' at line 121 (+4, nested 3 deep), '?:' at line 123 (+4, nested 3 deep), 'if' at line 129 (+4, nested 3 deep); fix: move lines 110-134 (the body of the 'for...of' at line 109) into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 7 and the new one scores 13."
+			}
+		}
+	],
+	"same": [
+		{
+			"rule": "lines-around-directive",
+			"file": "lib/rules/lines-around-directive.js",
+			"line": 137,
+			"label": "Function 'checkDirectives'",
+			"score": 17,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.",
+				"B": "Function 'checkDirectives' has cognitive complexity 17, over the max of 15; main contributors: 6 '&&' at lines 153-185 (+6), 5 'if' at lines 140-185 (+5), 'if' at line 153 (+2, nested 1 deep); fix: move lines 144-167 into a new function; this one drops to 8 and the new one scores 9.",
+				"C": "Function 'checkDirectives' has cognitive complexity 17, over the max of 15; main contributors: 6 '&&' at lines 153-185 (+6), 5 'if' at lines 140-185 (+5), 'if' at line 153 (+2, nested 1 deep); fix: move lines 144-167 into a new function; this one drops to 8 and the new one scores 9."
+			}
+		},
+		{
+			"rule": "computed-property-spacing",
+			"file": "lib/rules/computed-property-spacing.js",
+			"line": 152,
+			"label": "Anonymous function",
+			"score": 23,
+			"band": "21-30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed.",
+				"B": "Anonymous function has cognitive complexity 23, over the max of 15; main contributors: 3 'if' at lines 153-176 (+3), 'if' at line 166 (+3, nested 2 deep), 'if' at line 170 (+3, nested 2 deep); fix: move lines 164-174 into a new function; this one drops to 12 and the new one scores 11.",
+				"C": "Anonymous function has cognitive complexity 23, over the max of 15; main contributors: 3 'if' at lines 153-176 (+3), 'if' at line 166 (+3, nested 2 deep), 'if' at line 170 (+3, nested 2 deep); fix: move lines 164-174 into a new function; this one drops to 12 and the new one scores 11."
+			}
+		},
+		{
+			"rule": "no-useless-escape",
+			"file": "lib/rules/no-useless-escape.js",
+			"line": 186,
+			"label": "Method 'onCharacterEnter'",
+			"score": 53,
+			"band": "over 30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 53 to the 15 allowed.",
+				"B": "Method 'onCharacterEnter' has cognitive complexity 53, over the max of 15; main contributors: 5 'if' at lines 187-214 (+5), 'if' at line 252 (+5, nested 4 deep), 'if' at line 258 (+5, nested 4 deep); fix: move lines 248-266 (the body of the 'if' at line 245) into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 34 and the new one scores 8.",
+				"C": "Method 'onCharacterEnter' has cognitive complexity 53, over the max of 15; main contributors: 5 'if' at lines 187-214 (+5), 'if' at line 252 (+5, nested 4 deep), 'if' at line 258 (+5, nested 4 deep); fix: move lines 248-266 (the body of the 'if' at line 245) into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 34 and the new one scores 8."
+			}
+		},
+		{
+			"rule": "getter-return",
+			"file": "lib/rules/getter-return.js",
+			"line": 115,
+			"label": "Function 'isGetter'",
+			"score": 18,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.",
+				"B": "Function 'isGetter' has cognitive complexity 18, over the max of 15; main contributors: 'if' at line 128 (+4, nested 3 deep), 3 '&&' at lines 118-135 (+3), 'if' at line 125 (+3, nested 2 deep); fix: move lines 125-142 (the body of the 'if' at line 122) into a new function; it returns from this function on some paths, so have it return the result or undefined, and return that from the caller when it is defined; this one drops to 10 and the new one scores 5.",
+				"C": "Function 'isGetter' has cognitive complexity 18, over the max of 15; main contributors: 'if' at line 128 (+4, nested 3 deep), 3 '&&' at lines 118-135 (+3), 'if' at line 125 (+3, nested 2 deep); fix: move lines 125-142 (the body of the 'if' at line 122) into a new function; it returns from this function on some paths, so have it return the result or undefined, and return that from the caller when it is defined; this one drops to 10 and the new one scores 5."
+			}
+		},
+		{
+			"rule": "arrow-body-style",
+			"file": "lib/rules/arrow-body-style.js",
+			"line": 123,
+			"label": "Function 'validate'",
+			"score": 21,
+			"band": "21-30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.",
+				"B": "Function 'validate' has cognitive complexity 21, over the max of 15; main contributors: 4 '&&' at lines 129-219 (+4), 'if' at line 141 (+3, nested 2 deep), 3 'else if' at lines 143-147 (+3); fix: move lines 127-217 (the body of the 'if' at line 126) into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 7 and the new one scores 12.",
+				"C": "Function 'validate' has cognitive complexity 21, over the max of 15; main contributors: 4 '&&' at lines 129-219 (+4), 'if' at line 141 (+3, nested 2 deep), 3 'else if' at lines 143-147 (+3); fix: move lines 127-217 (the body of the 'if' at line 126) into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 7 and the new one scores 12."
+			}
+		},
+		{
+			"rule": "object-shorthand",
+			"file": "lib/rules/object-shorthand.js",
+			"line": 424,
+			"label": "Method 'Property:exit'",
+			"score": 36,
+			"band": "over 30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 36 to the 15 allowed.",
+				"B": "Method 'Property:exit' has cognitive complexity 36, over the max of 15; main contributors: 9 '&&' at lines 438-503 (+10), 4 'if' at lines 428-444 (+4), 4 'else if' at lines 454-503 (+4); fix: move lines 464-492 (the body of the 'else if' at line 463) into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 23 and the new one scores 10.",
+				"C": "Method 'Property:exit' has cognitive complexity 36, over the max of 15; main contributors: 9 '&&' at lines 438-503 (+10), 4 'if' at lines 428-444 (+4), 4 'else if' at lines 454-503 (+4); fix: move lines 464-492 (the body of the 'else if' at line 463) into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 23 and the new one scores 10."
+			}
+		},
+		{
+			"rule": "no-misleading-character-class",
+			"file": "lib/rules/no-misleading-character-class.js",
+			"line": 170,
+			"label": "Method 'zwj'",
+			"score": 16,
+			"band": "16-20",
+			"firstHint": "guard",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.",
+				"B": "Method 'zwj' has cognitive complexity 16, over the max of 15; main contributors: 'if' at line 183 (+4, nested 3 deep), 'if' at line 182 (+3, nested 2 deep), 'if' at line 174 (+2, nested 1 deep); fix: invert the 'if' at line 177 into a guard clause that continues to the next iteration early, so its body moves up a level; this one drops to 14.",
+				"C": "Method 'zwj' has cognitive complexity 16, over the max of 15; main contributors: 'if' at line 183 (+4, nested 3 deep), 'if' at line 182 (+3, nested 2 deep), 'if' at line 174 (+2, nested 1 deep); fix: invert the 'if' at line 177 into a guard clause that continues to the next iteration early, so its body moves up a level; this one drops to 14."
+			}
+		},
+		{
+			"rule": "no-duplicate-imports",
+			"file": "lib/rules/no-duplicate-imports.js",
+			"line": 141,
+			"label": "Function 'checkAndReport'",
+			"score": 22,
+			"band": "21-30",
+			"firstHint": "guard",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.",
+				"B": "Function 'checkAndReport' has cognitive complexity 22, over the max of 15; main contributors: 'if' at line 164 (+4, nested 3 deep), 'if' at line 160 (+3, nested 2 deep), 'if' at line 163 (+3, nested 2 deep); fix: invert the 'if' at line 150 into a guard clause that returns early, so its body moves up a level; this one drops to 15.",
+				"C": "Function 'checkAndReport' has cognitive complexity 22, over the max of 15; main contributors: 'if' at line 164 (+4, nested 3 deep), 'if' at line 160 (+3, nested 2 deep), 'if' at line 163 (+3, nested 2 deep); fix: invert the 'if' at line 150 into a guard clause that returns early, so its body moves up a level; this one drops to 15."
+			}
+		},
+		{
+			"rule": "id-match",
+			"file": "lib/rules/id-match.js",
+			"line": 178,
+			"label": "Method 'Identifier'",
+			"score": 60,
+			"band": "over 30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 60 to the 15 allowed.",
+				"B": "Method 'Identifier' has cognitive complexity 60, over the max of 15; main contributors: 15 '&&' at lines 194-273 (+16), 7 'else if' at lines 201-278 (+7), 'if' at line 196 (+3, nested 2 deep); fix: move lines 233-261 (the body of the 'else if' at line 231) into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 38 and the new one scores 18.",
+				"C": "Method 'Identifier' has cognitive complexity 60, over the max of 15; main contributors: 15 '&&' at lines 194-273 (+16), 7 'else if' at lines 201-278 (+7), 'if' at line 196 (+3, nested 2 deep); fix: move lines 233-261 (the body of the 'else if' at line 231) into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 38 and the new one scores 18."
+			}
+		},
+		{
+			"rule": "object-curly-newline",
+			"file": "lib/rules/object-curly-newline.js",
+			"line": 199,
+			"label": "Function 'check'",
+			"score": 19,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.",
+				"B": "Function 'check' has cognitive complexity 19, over the max of 15; main contributors: 3 '&&' at lines 203-295 (+6), 3 'if' at lines 202-240 (+3), 2 'else' at lines 217-269 (+2); fix: move lines 270-313 (the 'else' branch at line 269) into a new function; this one drops to 11 and the new one scores 6.",
+				"C": "Function 'check' has cognitive complexity 19, over the max of 15; main contributors: 3 '&&' at lines 203-295 (+6), 3 'if' at lines 202-240 (+3), 2 'else' at lines 217-269 (+2); fix: move lines 270-313 (the 'else' branch at line 269) into a new function; this one drops to 11 and the new one scores 6."
+			}
+		},
+		{
+			"rule": "object-curly-spacing",
+			"file": "lib/rules/object-curly-spacing.js",
+			"line": 173,
+			"label": "Function 'validateBraceSpacing'",
+			"score": 21,
+			"band": "21-30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.",
+				"B": "Function 'validateBraceSpacing' has cognitive complexity 21, over the max of 15; main contributors: 7 '&&' at lines 177-202 (+9), 2 'if' at lines 174-185 (+2), 'if' at line 177 (+2, nested 1 deep); fix: move lines 186-204 (the body of the 'if' at line 185) into a new function; this one drops to 8 and the new one scores 10.",
+				"C": "Function 'validateBraceSpacing' has cognitive complexity 21, over the max of 15; main contributors: 7 '&&' at lines 177-202 (+9), 2 'if' at lines 174-185 (+2), 'if' at line 177 (+2, nested 1 deep); fix: move lines 186-204 (the body of the 'if' at line 185) into a new function; this one drops to 8 and the new one scores 10."
+			}
+		},
+		{
+			"rule": "prefer-regex-literals",
+			"file": "lib/rules/prefer-regex-literals.js",
+			"line": 371,
+			"label": "Method 'Program'",
+			"score": 46,
+			"band": "over 30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 46 to the 15 allowed.",
+				"B": "Method 'Program' has cognitive complexity 46, over the max of 15; main contributors: 'if' at line 390 (+4, nested 3 deep), 'if' at line 401 (+4, nested 3 deep), 'if' at line 428 (+4, nested 3 deep); fix: move lines 448-501 (the body of the 'else if' at line 447) into a new function; this one drops to 22 and the new one scores 10.",
+				"C": "Method 'Program' has cognitive complexity 46, over the max of 15; main contributors: 'if' at line 390 (+4, nested 3 deep), 'if' at line 401 (+4, nested 3 deep), 'if' at line 428 (+4, nested 3 deep); fix: move lines 448-501 (the body of the 'else if' at line 447) into a new function; this one drops to 22 and the new one scores 10."
+			}
+		},
+		{
+			"rule": "use-isnan",
+			"file": "lib/rules/use-isnan.js",
+			"line": 177,
+			"label": "Function 'checkCallExpression'",
+			"score": 16,
+			"band": "16-20",
+			"firstHint": "guard",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.",
+				"B": "Function 'checkCallExpression' has cognitive complexity 16, over the max of 15; main contributors: '?:' at line 198 (+4, nested 3 deep), '?:' at line 199 (+4, nested 3 deep), 'if' at line 196 (+3, nested 2 deep); fix: invert the 'if' at line 180 into a guard clause that returns early, so its body moves up a level; this one drops to 12.",
+				"C": "Function 'checkCallExpression' has cognitive complexity 16, over the max of 15; main contributors: '?:' at line 198 (+4, nested 3 deep), '?:' at line 199 (+4, nested 3 deep), 'if' at line 196 (+3, nested 2 deep); fix: invert the 'if' at line 180 into a guard clause that returns early, so its body moves up a level; this one drops to 12."
+			}
+		},
+		{
+			"rule": "array-bracket-spacing",
+			"file": "lib/rules/array-bracket-spacing.js",
+			"line": 190,
+			"label": "Function 'validateArraySpacing'",
+			"score": 26,
+			"band": "21-30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.",
+				"B": "Function 'validateArraySpacing' has cognitive complexity 26, over the max of 15; main contributors: 8 '&&' at lines 191-229 (+12), 3 'if' at lines 191-225 (+3), 3 '?:' at lines 197-211 (+3); fix: move lines 216-232 into a new function; this one drops to 11 and the new one scores 15.",
+				"C": "Function 'validateArraySpacing' has cognitive complexity 26, over the max of 15; main contributors: 8 '&&' at lines 191-229 (+12), 3 'if' at lines 191-225 (+3), 3 '?:' at lines 197-211 (+3); fix: move lines 216-232 into a new function; this one drops to 11 and the new one scores 15."
+			}
+		},
+		{
+			"rule": "func-name-matching",
+			"file": "lib/rules/func-name-matching.js",
+			"line": 204,
+			"label": "Method 'Property, PropertyDefinition[value]'",
+			"score": 31,
+			"band": "over 30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 31 to the 15 allowed.",
+				"B": "Method 'Property, PropertyDefinition[value]' has cognitive complexity 31, over the max of 15; main contributors: 7 '&&' at lines 205-244 (+7), 'if' at line 221 (+4, nested 3 deep), 4 'else if' at lines 224-237 (+4); fix: move lines 218-236 (the body of the 'if' at line 213) into a new function; it reassigns 'propertyName', which the code around it reads, so have it return the new 'propertyName' and assign it from the call; this one drops to 10 and the new one scores 13.",
+				"C": "Method 'Property, PropertyDefinition[value]' has cognitive complexity 31, over the max of 15; main contributors: 7 '&&' at lines 205-244 (+7), 'if' at line 221 (+4, nested 3 deep), 4 'else if' at lines 224-237 (+4); fix: move lines 218-236 (the body of the 'if' at line 213) into a new function; it reassigns 'propertyName', which the code around it reads, so have it return the new 'propertyName' and assign it from the call; this one drops to 10 and the new one scores 13."
+			}
+		},
+		{
+			"rule": "quote-props",
+			"file": "lib/rules/quote-props.js",
+			"line": 148,
+			"label": "Function 'checkUnnecessaryQuotes'",
+			"score": 17,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.",
+				"B": "Function 'checkUnnecessaryQuotes' has cognitive complexity 17, over the max of 15; main contributors: 5 '&&' at lines 155-189 (+5), 2 'if' at lines 151-155 (+2), 'catch' at line 160 (+2, nested 1 deep); fix: move lines 156-181 (the body of the 'if' at line 155) into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 9 and the new one scores 6.",
+				"C": "Function 'checkUnnecessaryQuotes' has cognitive complexity 17, over the max of 15; main contributors: 5 '&&' at lines 155-189 (+5), 2 'if' at lines 151-155 (+2), 'catch' at line 160 (+2, nested 1 deep); fix: move lines 156-181 (the body of the 'if' at line 155) into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 9 and the new one scores 6."
+			}
+		},
+		{
+			"rule": "lines-around-comment",
+			"file": "lib/rules/lines-around-comment.js",
+			"line": 362,
+			"label": "Function 'checkForEmptyLine'",
+			"score": 23,
+			"band": "21-30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed.",
+				"B": "Function 'checkForEmptyLine' has cognitive complexity 23, over the max of 15; main contributors: 16 '&&' at lines 363-426 (+16), 7 'if' at lines 363-425 (+7); fix: move lines 371-396 into a new function; it declares 'after', 'before', 'prevLineNum' and 4 more, which the code after it uses, so declare 'after', 'before', 'prevLineNum' and 4 more before line 371, have it return 'after', 'before', 'prevLineNum' and 4 more, and assign them from the call; this one drops to 12 and the new one scores 11.",
+				"C": "Function 'checkForEmptyLine' has cognitive complexity 23, over the max of 15; main contributors: 16 '&&' at lines 363-426 (+16), 7 'if' at lines 363-425 (+7); fix: move lines 371-396 into a new function; it declares 'after', 'before', 'prevLineNum' and 4 more, which the code after it uses, so declare 'after', 'before', 'prevLineNum' and 4 more before line 371, have it return 'after', 'before', 'prevLineNum' and 4 more, and assign them from the call; this one drops to 12 and the new one scores 11."
+			}
+		},
+		{
+			"rule": "no-self-assign",
+			"file": "lib/rules/no-self-assign.js",
+			"line": 30,
+			"label": "Function 'eachSelfAssignment'",
+			"score": 36,
+			"band": "over 30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 36 to the 15 allowed.",
+				"B": "Function 'eachSelfAssignment' has cognitive complexity 36, over the max of 15; main contributors: 9 '&&' at lines 35-114 (+9), 6 'else if' at lines 34-113 (+6), 'if' at line 51 (+3, nested 2 deep); fix: move lines 44-65 (the body of the 'else if' at line 40) into a new function; this one drops to 26 and the new one scores 7.",
+				"C": "Function 'eachSelfAssignment' has cognitive complexity 36, over the max of 15; main contributors: 9 '&&' at lines 35-114 (+9), 6 'else if' at lines 34-113 (+6), 'if' at line 51 (+3, nested 2 deep); fix: move lines 44-65 (the body of the 'else if' at line 40) into a new function; this one drops to 26 and the new one scores 7."
+			}
+		},
+		{
+			"rule": "no-extra-boolean-cast",
+			"file": "lib/rules/no-extra-boolean-cast.js",
+			"line": 250,
+			"label": "Method 'fix'",
+			"score": 18,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.",
+				"B": "Method 'fix' has cognitive complexity 18, over the max of 15; main contributors: 'if' at line 260 (+3, nested 2 deep), 'if' at line 268 (+3, nested 2 deep), 2 'if' at lines 253-290 (+2); fix: move lines 254-287 (the body of the 'if' at line 253) into a new function; it returns from this function, so return its result from the caller; this one drops to 6 and the new one scores 8.",
+				"C": "Method 'fix' has cognitive complexity 18, over the max of 15; main contributors: 'if' at line 260 (+3, nested 2 deep), 'if' at line 268 (+3, nested 2 deep), 2 'if' at lines 253-290 (+2); fix: move lines 254-287 (the body of the 'if' at line 253) into a new function; it returns from this function, so return its result from the caller; this one drops to 6 and the new one scores 8."
+			}
+		},
+		{
+			"rule": "sort-imports",
+			"file": "lib/rules/sort-imports.js",
+			"line": 137,
+			"label": "Method 'ImportDeclaration'",
+			"score": 29,
+			"band": "21-30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed.",
+				"B": "Method 'ImportDeclaration' has cognitive complexity 29, over the max of 15; main contributors: 4 '&&' at lines 140-177 (+4), 'if' at line 166 (+4, nested 3 deep), 'if' at line 177 (+4, nested 3 deep); fix: move lines 150-186 (the body of the 'if' at line 149) into a new function; this one drops to 11 and the new one scores 10.",
+				"C": "Method 'ImportDeclaration' has cognitive complexity 29, over the max of 15; main contributors: 4 '&&' at lines 140-177 (+4), 'if' at line 166 (+4, nested 3 deep), 'if' at line 177 (+4, nested 3 deep); fix: move lines 150-186 (the body of the 'if' at line 149) into a new function; this one drops to 11 and the new one scores 10."
+			}
+		},
+		{
+			"rule": "no-extra-parens",
+			"file": "lib/rules/no-extra-parens.js",
+			"line": 1018,
+			"label": "Callback passed to 'forEach'",
+			"score": 20,
+			"band": "16-20",
+			"firstHint": "guard",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed.",
+				"B": "Callback passed to 'forEach' has cognitive complexity 20, over the max of 15; main contributors: 'if' at line 1040 (+4, nested 3 deep), 'if' at line 1051 (+4, nested 3 deep), 'if' at line 1028 (+3, nested 2 deep); fix: invert the 'if' at line 1035 into a guard clause that continues to the next iteration early, so its body moves up a level; this one drops to 17.",
+				"C": "Callback passed to 'forEach' has cognitive complexity 20, over the max of 15; main contributors: 'if' at line 1040 (+4, nested 3 deep), 'if' at line 1051 (+4, nested 3 deep), 'if' at line 1028 (+3, nested 2 deep); fix: invert the 'if' at line 1035 into a guard clause that continues to the next iteration early, so its body moves up a level; this one drops to 17."
+			}
+		},
+		{
+			"rule": "indent",
+			"file": "lib/rules/indent.js",
+			"line": 1712,
+			"label": "Method 'Program:exit'",
+			"score": 30,
+			"band": "21-30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 30 to the 15 allowed.",
+				"B": "Method 'Program:exit' has cognitive complexity 30, over the max of 15; main contributors: 4 '&&' at lines 1768-1784 (+5), 3 'for' at lines 1721-1749 (+3), '?:' at line 1767 (+3, nested 2 deep); fix: move lines 1751-1797 (the body of the 'for' at line 1749) into a new function; this one drops to 8 and the new one scores 15.",
+				"C": "Method 'Program:exit' has cognitive complexity 30, over the max of 15; main contributors: 4 '&&' at lines 1768-1784 (+5), 3 'for' at lines 1721-1749 (+3), '?:' at line 1767 (+3, nested 2 deep); fix: move lines 1751-1797 (the body of the 'for' at line 1749) into a new function; this one drops to 8 and the new one scores 15."
+			}
+		},
+		{
+			"rule": "no-trailing-spaces",
+			"file": "lib/rules/no-trailing-spaces.js",
+			"line": 118,
+			"label": "Function 'Program'",
+			"score": 17,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.",
+				"B": "Function 'Program' has cognitive complexity 17, over the max of 15; main contributors: 3 '&&' at lines 142-174 (+3), 'if' at line 163 (+3, nested 2 deep), 'if' at line 174 (+3, nested 2 deep); fix: move lines 135-186 (the body of the 'for' at line 134) into a new function; it reassigns 'totalLength', which the code around it reads, so have it return the new 'totalLength' and assign it from the call; this one drops to 1 and the new one scores 11.",
+				"C": "Function 'Program' has cognitive complexity 17, over the max of 15; main contributors: 3 '&&' at lines 142-174 (+3), 'if' at line 163 (+3, nested 2 deep), 'if' at line 174 (+3, nested 2 deep); fix: move lines 135-186 (the body of the 'for' at line 134) into a new function; it reassigns 'totalLength', which the code around it reads, so have it return the new 'totalLength' and assign it from the call; this one drops to 1 and the new one scores 11."
+			}
+		},
+		{
+			"rule": "no-param-reassign",
+			"file": "lib/rules/no-param-reassign.js",
+			"line": 80,
+			"label": "Function 'isModifyingProp'",
+			"score": 22,
+			"band": "21-30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 22 to the 15 allowed.",
+				"B": "Function 'isModifyingProp' has cognitive complexity 22, over the max of 15; main contributors: 'if' at line 98 (+3, nested 2 deep), 'if' at line 106 (+3, nested 2 deep), 'if' at line 115 (+3, nested 2 deep); fix: move lines 106-111 (the 'case' at line 105) into a new function; it returns from this function, so return its result from the caller; this one drops to 19 and the new one scores 1.",
+				"C": "Function 'isModifyingProp' has cognitive complexity 22, over the max of 15; main contributors: 'if' at line 98 (+3, nested 2 deep), 'if' at line 106 (+3, nested 2 deep), 'if' at line 115 (+3, nested 2 deep); fix: move lines 106-111 (the 'case' at line 105) into a new function; it returns from this function, so return its result from the caller; this one drops to 19 and the new one scores 1."
+			}
+		},
+		{
+			"rule": "sort-keys",
+			"file": "lib/rules/sort-keys.js",
+			"line": 161,
+			"label": "Method 'Property'",
+			"score": 18,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.",
+				"B": "Method 'Property' has cognitive complexity 18, over the max of 15; main contributors: 6 'if' at lines 162-213 (+6), 4 '&&' at lines 171-204 (+4), 'if' at line 188 (+2, nested 1 deep); fix: move lines 174-207 into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 9 and the new one scores 10.",
+				"C": "Method 'Property' has cognitive complexity 18, over the max of 15; main contributors: 6 'if' at lines 162-213 (+6), 4 '&&' at lines 171-204 (+4), 'if' at line 188 (+2, nested 1 deep); fix: move lines 174-207 into a new function; it returns from this function on some paths, so have it return whether to stop, and return from the caller when it does; this one drops to 9 and the new one scores 10."
+			}
+		},
+		{
+			"rule": "max-len",
+			"file": "lib/rules/max-len.js",
+			"line": 330,
+			"label": "Callback passed to 'forEach'",
+			"score": 26,
+			"band": "21-30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 26 to the 15 allowed.",
+				"B": "Callback passed to 'forEach' has cognitive complexity 26, over the max of 15; main contributors: 5 '&&' at lines 352-389 (+9), 4 'if' at lines 346-404 (+4), 'while' at line 366 (+3, nested 2 deep); fix: move lines 333-374 into a new function; it reassigns 'commentsIndex' and declares 'lineNumber', 'lineIsComment' and 'textToMeasure', which the code around it reads, so declare 'lineNumber', 'lineIsComment' and 'textToMeasure' before line 333, have it return the new 'commentsIndex', 'lineNumber', 'lineIsComment' and 1 more, and assign them from the call; this one drops to 13 and the new one scores 13.",
+				"C": "Callback passed to 'forEach' has cognitive complexity 26, over the max of 15; main contributors: 5 '&&' at lines 352-389 (+9), 4 'if' at lines 346-404 (+4), 'while' at line 366 (+3, nested 2 deep); fix: move lines 333-374 into a new function; it reassigns 'commentsIndex' and declares 'lineNumber', 'lineIsComment' and 'textToMeasure', which the code around it reads, so declare 'lineNumber', 'lineIsComment' and 'textToMeasure' before line 333, have it return the new 'commentsIndex', 'lineNumber', 'lineIsComment' and 1 more, and assign them from the call; this one drops to 13 and the new one scores 13."
+			}
+		},
+		{
+			"rule": "prefer-object-spread",
+			"file": "lib/rules/prefer-object-spread.js",
+			"line": 179,
+			"label": "Anonymous function",
+			"score": 17,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.",
+				"B": "Anonymous function has cognitive complexity 17, over the max of 15; main contributors: 3 'else' at lines 190-234 (+3), 'for...of' at line 209 (+3, nested 2 deep), 'if' at line 222 (+3, nested 2 deep); fix: move lines 197-237 (the body of the 'for...of' at line 196) into a new function; it yields, so make it a generator and yield* its result; this one drops to 3 and the new one scores 10.",
+				"C": "Anonymous function has cognitive complexity 17, over the max of 15; main contributors: 3 'else' at lines 190-234 (+3), 'for...of' at line 209 (+3, nested 2 deep), 'if' at line 222 (+3, nested 2 deep); fix: move lines 197-237 (the body of the 'for...of' at line 196) into a new function; it yields, so make it a generator and yield* its result; this one drops to 3 and the new one scores 10."
+			}
+		},
+		{
+			"rule": "spaced-comment",
+			"file": "lib/rules/spaced-comment.js",
+			"line": 333,
+			"label": "Function 'checkCommentForSpace'",
+			"score": 25,
+			"band": "21-30",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.",
+				"B": "Function 'checkCommentForSpace' has cognitive complexity 25, over the max of 15; main contributors: '?:' at line 350 (+3, nested 2 deep), 'if' at line 352 (+3, nested 2 deep), 3 'else' at lines 354-366 (+3); fix: move lines 348-361 (the body of the 'if' at line 347) into a new function; this one drops to 13 and the new one scores 8.",
+				"C": "Function 'checkCommentForSpace' has cognitive complexity 25, over the max of 15; main contributors: '?:' at line 350 (+3, nested 2 deep), 'if' at line 352 (+3, nested 2 deep), 3 'else' at lines 354-366 (+3); fix: move lines 348-361 (the body of the 'if' at line 347) into a new function; this one drops to 13 and the new one scores 8."
+			}
+		},
+		{
+			"rule": "max-lines-per-function",
+			"file": "lib/rules/max-lines-per-function.js",
+			"line": 166,
+			"label": "Function 'processFunction'",
+			"score": 16,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.",
+				"B": "Function 'processFunction' has cognitive complexity 16, over the max of 15; main contributors: 'if' at line 178 (+3, nested 2 deep), 'if' at line 184 (+3, nested 2 deep), 2 'if' at lines 169-192 (+2); fix: move lines 175-189 (the body of the 'for' at line 174) into a new function; it reassigns 'lineCount', which the code around it reads, so have it return the new 'lineCount' and assign it from the call; this one drops to 5 and the new one scores 7.",
+				"C": "Function 'processFunction' has cognitive complexity 16, over the max of 15; main contributors: 'if' at line 178 (+3, nested 2 deep), 'if' at line 184 (+3, nested 2 deep), 2 'if' at lines 169-192 (+2); fix: move lines 175-189 (the body of the 'for' at line 174) into a new function; it reassigns 'lineCount', which the code around it reads, so have it return the new 'lineCount' and assign it from the call; this one drops to 5 and the new one scores 7."
+			}
+		},
+		{
+			"rule": "no-constant-binary-expression",
+			"file": "lib/rules/no-constant-binary-expression.js",
+			"line": 272,
+			"label": "Function 'hasConstantStrictBooleanComparison'",
+			"score": 18,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.",
+				"B": "Function 'hasConstantStrictBooleanComparison' has cognitive complexity 18, over the max of 15; main contributors: 3 '&&' at lines 306-337 (+3), 'if' at line 287 (+2, nested 1 deep), 'if' at line 290 (+2, nested 1 deep); fix: move lines 325-342 (the 'case' at line 325) into a new function; it returns from this function, so return its result from the caller; this one drops to 10 and the new one scores 5.",
+				"C": "Function 'hasConstantStrictBooleanComparison' has cognitive complexity 18, over the max of 15; main contributors: 3 '&&' at lines 306-337 (+3), 'if' at line 287 (+2, nested 1 deep), 'if' at line 290 (+2, nested 1 deep); fix: move lines 325-342 (the 'case' at line 325) into a new function; it returns from this function, so return its result from the caller; this one drops to 10 and the new one scores 5."
+			}
+		},
+		{
+			"rule": "keyword-spacing",
+			"file": "lib/rules/keyword-spacing.js",
+			"line": 234,
+			"label": "Function 'parseOptions'",
+			"score": 19,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.",
+				"B": "Function 'parseOptions' has cognitive complexity 19, over the max of 15; main contributors: '?:' at line 249 (+3, nested 2 deep), '?:' at line 250 (+3, nested 2 deep), '?:' at line 253 (+3, nested 2 deep); fix: move lines 249-255 (the body of the 'if' at line 248) into a new function; this one drops to 7 and the new one scores 4.",
+				"C": "Function 'parseOptions' has cognitive complexity 19, over the max of 15; main contributors: '?:' at line 249 (+3, nested 2 deep), '?:' at line 250 (+3, nested 2 deep), '?:' at line 253 (+3, nested 2 deep); fix: move lines 249-255 (the body of the 'if' at line 248) into a new function; this one drops to 7 and the new one scores 4."
+			}
+		},
+		{
+			"rule": "no-empty-function",
+			"file": "lib/rules/no-empty-function.js",
+			"line": 41,
+			"label": "Function 'getKind'",
+			"score": 19,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.",
+				"B": "Function 'getKind' has cognitive complexity 19, over the max of 15; main contributors: 3 'if' at lines 45-78 (+3), 'if' at line 51 (+2, nested 1 deep), 'if' at line 54 (+2, nested 1 deep); fix: move lines 76-85 into a new function; it returns from this function, so return its result from the caller; this one drops to 16 and the new one scores 3.",
+				"C": "Function 'getKind' has cognitive complexity 19, over the max of 15; main contributors: 3 'if' at lines 45-78 (+3), 'if' at line 51 (+2, nested 1 deep), 'if' at line 54 (+2, nested 1 deep); fix: move lines 76-85 into a new function; it returns from this function, so return its result from the caller; this one drops to 16 and the new one scores 3."
+			}
+		},
+		{
+			"rule": "multiline-comment-style",
+			"file": "lib/rules/multiline-comment-style.js",
+			"line": 263,
+			"label": "Method 'starred-block'",
+			"score": 18,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.",
+				"B": "Method 'starred-block' has cognitive complexity 18, over the max of 15; main contributors: '?:' at line 292 (+3, nested 2 deep), '?:' at line 317 (+3, nested 2 deep), 'if' at line 321 (+3, nested 2 deep); fix: move lines 287-362 (the 'else' branch at line 286) into a new function; this one drops to 3 and the new one scores 9.",
+				"C": "Method 'starred-block' has cognitive complexity 18, over the max of 15; main contributors: '?:' at line 292 (+3, nested 2 deep), '?:' at line 317 (+3, nested 2 deep), 'if' at line 321 (+3, nested 2 deep); fix: move lines 287-362 (the 'else' branch at line 286) into a new function; this one drops to 3 and the new one scores 9."
+			}
+		},
+		{
+			"rule": "no-use-before-define",
+			"file": "lib/rules/no-use-before-define.js",
+			"line": 163,
+			"label": "Function 'isEvaluatedDuringInitialization'",
+			"score": 18,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.",
+				"B": "Function 'isEvaluatedDuringInitialization' has cognitive complexity 18, over the max of 15; main contributors: 'if' at line 196 (+3, nested 2 deep), 'if' at line 199 (+3, nested 2 deep), 'if' at line 206 (+3, nested 2 deep); fix: move lines 192-214 into a new function; it returns from this function on some paths, so have it return the result or undefined, and return that from the caller when it is defined; this one drops to 4 and the new one scores 15.",
+				"C": "Function 'isEvaluatedDuringInitialization' has cognitive complexity 18, over the max of 15; main contributors: 'if' at line 196 (+3, nested 2 deep), 'if' at line 199 (+3, nested 2 deep), 'if' at line 206 (+3, nested 2 deep); fix: move lines 192-214 into a new function; it returns from this function on some paths, so have it return the result or undefined, and return that from the caller when it is defined; this one drops to 4 and the new one scores 15."
+			}
+		},
+		{
+			"rule": "no-shadow",
+			"file": "lib/rules/no-shadow.js",
+			"line": 117,
+			"label": "Function 'isInitPatternNode'",
+			"score": 19,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.",
+				"B": "Function 'isInitPatternNode' has cognitive complexity 19, over the max of 15; main contributors: 3 'if' at lines 120-139 (+3), 'if' at line 148 (+3, nested 2 deep), 'if' at line 151 (+3, nested 2 deep); fix: move lines 143-166 into a new function; it returns from this function on some paths, so have it return the result or undefined, and return that from the caller when it is defined; this one drops to 5 and the new one scores 15.",
+				"C": "Function 'isInitPatternNode' has cognitive complexity 19, over the max of 15; main contributors: 3 'if' at lines 120-139 (+3), 'if' at line 148 (+3, nested 2 deep), 'if' at line 151 (+3, nested 2 deep); fix: move lines 143-166 into a new function; it returns from this function on some paths, so have it return the result or undefined, and return that from the caller when it is defined; this one drops to 5 and the new one scores 15."
+			}
+		},
+		{
+			"rule": "no-else-return",
+			"file": "lib/rules/no-else-return.js",
+			"line": 183,
+			"label": "Method 'fix'",
+			"score": 16,
+			"band": "16-20",
+			"firstHint": "move",
+			"split": false,
+			"messages": {
+				"A": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.",
+				"B": "Method 'fix' has cognitive complexity 16, over the max of 15; main contributors: 7 '&&' at lines 195-234 (+7), 5 'if' at lines 185-234 (+5), 2 'else' at lines 197-236 (+2); fix: move lines 207-232 into a new function; it returns from this function on some paths, so have it return the result or undefined, and return that from the caller when it is defined; this one drops to 8 and the new one scores 9.",
+				"C": "Method 'fix' has cognitive complexity 16, over the max of 15; main contributors: 7 '&&' at lines 195-234 (+7), 5 'if' at lines 185-234 (+5), 2 'else' at lines 197-236 (+2); fix: move lines 207-232 into a new function; it returns from this function on some paths, so have it return the result or undefined, and return that from the caller when it is defined; this one drops to 8 and the new one scores 9."
+			}
+		}
+	],
+	"excluded": [
+		{
+			"file": "lib/rules/array-callback-return.js",
+			"line": 69,
+			"reason": "3 functions over the max"
+		},
+		{
+			"file": "lib/rules/indent-legacy.js",
+			"line": 611,
+			"reason": "3 functions over the max"
+		},
+		{
+			"file": "lib/rules/no-restricted-imports.js",
+			"line": 385,
+			"reason": "2 functions over the max"
+		},
+		{
+			"file": "lib/rules/no-unused-vars.js",
+			"line": 200,
+			"reason": "3 functions over the max"
+		},
+		{
+			"file": "lib/rules/no-useless-assignment.js",
+			"line": 230,
+			"reason": "2 functions over the max"
+		},
+		{
+			"file": "lib/rules/one-var.js",
+			"line": 192,
+			"reason": "3 functions over the max"
+		},
+		{
+			"file": "lib/rules/prefer-arrow-callback.js",
+			"line": 68,
+			"reason": "2 functions over the max"
+		},
+		{
+			"file": "lib/rules/prefer-const.js",
+			"line": 173,
+			"reason": "2 functions over the max"
+		}
+	]
+}
