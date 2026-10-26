@@ -4,6 +4,12 @@ Keep code written by coding agents easy for people to review. An [Oxlint](https:
 
 > **Status:** early development. Nothing is published yet, and the API may change.
 
+**Setting up with a coding agent?** [`install.md`](install.md) walks Claude Code through installing and configuring the plugin, the checker and the hook in your project, asking you where a choice is yours. Pipe it in from your project's directory, or point your agent at the file:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/afterimaginary/oxlint-plugin-complexity-hints/main/install.md | claude
+```
+
 What the evaluations show so far:
 
 - **The hints keep their promise.** On ESLint, Prettier, Vite and Excalidraw, each of the 318 fixes that states a score was applied mechanically, and every one reached exactly that score ([hint evaluation](docs/evaluation/hints.md)).
@@ -151,7 +157,7 @@ What counts toward the score, how it differs from the whitepaper, why there is n
 
 **Claude Code only, for now.** The hook, the guidance below and the agent pilot that informed them are written for and tested with Claude Code. The checker is a plain command that any agent or hook can run, but other agents' setups aren't documented or tested yet.
 
-**Check each change as the agent makes it.** The package's `complexity-hints` command runs the project's Oxlint on what changed since the branch left the default branch, and reports only what the change is responsible for: a function the change touches, when the change also touches the code the diagnostic's fix points at. Functions the change didn't touch aren't reported, so the agent isn't pulled into refactoring code outside its task. In Claude Code, a `PostToolUse` hook in `.claude/settings.json` runs it after each edit, and exits 2 to pass what blocks back to the agent:
+**Check each change as the agent makes it.** The package's `complexity-hints` command runs the project's Oxlint on what changed since the branch left the default branch, and reports only what the change is responsible for: a function the change touches, when the change also touches the code the diagnostic's fix points at. Functions the change didn't touch aren't reported, so the agent isn't pulled into refactoring code outside its task. In Claude Code, a `PostToolUse` hook in `.claude/settings.json` runs it after each edit:
 
 ```json
 {
@@ -162,7 +168,7 @@ What counts toward the score, how it differs from the whitepaper, why there is n
 				"hooks": [
 					{
 						"type": "command",
-						"command": "command -v jq >/dev/null || { echo 'complexity-hints hook: jq not found' >&2; exit 1; }; cd \"$CLAUDE_PROJECT_DIR\" && jq -r '(.tool_input.file_path // .tool_response.bashEditDiff.changedFiles[]?) | select(startswith(env.CLAUDE_PROJECT_DIR + \"/\"))' | { set --; while IFS= read -r f; do set -- \"$@\" \"$f\"; done; [ $# -gt 0 ] || exit 0; node_modules/.bin/complexity-hints \"$@\" >&2; case $? in 0) ;; 1) exit 2 ;; *) exit 1 ;; esac; }"
+						"command": "\"$CLAUDE_PROJECT_DIR\"/node_modules/.bin/complexity-hints --claude-code-hook"
 					}
 				]
 			}
@@ -171,7 +177,7 @@ What counts toward the score, how it differs from the whitepaper, why there is n
 }
 ```
 
-It needs [`jq`](https://jqlang.org). It checks the file an `Edit` or `Write` call changed, or the files a `Bash` command changed, when they're in the project; any other call passes. Claude Code lists the files a `Bash` command changed from version 2.1.269, and in every permission mode only with `"bashEditDiffEnabled": true` in your user settings (`~/.claude/settings.json`); a project's settings can't turn it on. When the check can't run, for example without `jq` or with no default branch to compare against, the hook exits 1: the user sees the error, and the agent isn't blocked. The checker runs `vp lint` in a Vite+ project, and `oxlint` otherwise. [The spec](docs/specs/scoped-checker.md) has its options and output.
+With `--claude-code-hook`, the checker reads the hook's input and checks the file an `Edit` or `Write` call changed, or the files a `Bash` command changed, when they're in the project; any other call passes. When something blocks, it exits 2, which passes the diagnostics back to the agent. Claude Code lists the files a `Bash` command changed from version 2.1.269. Without any setting, it does so only in auto and `bypassPermissions` modes. For every mode, set `"bashEditDiffEnabled": true` in your user settings (`~/.claude/settings.json`), since a `true` in a project's settings doesn't count, or `CLAUDE_CODE_BASH_EDIT_DIFF=1` for a session. When the check can't run, for example with no default branch to compare against or the package not installed, the hook fails with another exit code: the user sees the error, and the agent isn't blocked. The checker runs `vp lint` in a Vite+ project, and `oxlint` otherwise. [The spec](docs/specs/scoped-checker.md) has its options and output.
 
 **Gate the commit too.** Run `npx --no complexity-hints` before each commit or in CI: it exits 1 when something blocks, and `--no` keeps `npx` from fetching a package of that name when the project's own isn't installed. In a `pull_request` workflow, CI needs the history back to the merge base, the project's dependencies, and the base named:
 

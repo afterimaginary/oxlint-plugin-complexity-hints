@@ -78,4 +78,16 @@ equal(help.status, 0, help.stderr);
 
 ok(help.stdout.startsWith("Usage: complexity-hints"), help.stdout);
 
+// As a hook, a call that changed no file passes without running anything.
+const hook = spawnSync(
+	process.execPath,
+	[join(root, "dist/checker/cli.mjs"), "--claude-code-hook"],
+	{
+		encoding: "utf8",
+		input: JSON.stringify({ tool_name: "Bash", tool_input: { command: "ls" }, tool_response: {} }),
+	},
+);
+
+equal(hook.status, 0, hook.stderr);
+
 console.log(`Built package loads and runs on Node ${process.versions.node}.`);
