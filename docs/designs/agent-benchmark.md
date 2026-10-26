@@ -36,7 +36,7 @@ The split tasks are run first. The same-hint tasks are drawn with a fixed seed. 
 | B: guard first     | this rule's message, as it ships                                                                               | all                            |
 | C: guard if enough | this rule's message under "guard if enough"                                                                    | split only (elsewhere it is B) |
 
-Every arm registers the same rule, `complexity/cognitive-complexity`, under the same config. `arm-plugin.ts` is bundled once per arm into a single file, which each run copies to the same path, `.oxlint/complexity.mjs`. No path, name or config tells the agent which arm it is in, and edits to this repository during a benchmark can't change a run's plugin.
+Every arm registers the same rule, `complexity/cognitive-complexity`, under the same config. Each arm's plugin is bundled into a single file, which each run copies to the same path, `.oxlint/complexity.mjs`. A bundle's entry holds only the arm's rule: the bare one, or this rule under the arm's strategy. No path, name, config or bundle tells the agent which arm it is in.
 
 ## A run
 
@@ -54,10 +54,16 @@ Every arm registers the same rule, `complexity/cognitive-complexity`, under the 
 
 - **Environment.** The session's environment is built from nothing, so nothing from the shell that starts it reaches the agent. An API key is passed only on API-funded runs, and Claude Code's credential scrub (`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`) removes it from the agent's commands and the hooks. The scrub rules out bypassing permissions, so the six tools are approved by name. The run checks the session's reported key source, model and tools before it starts, and aborts if any differ; a run whose records contain the key stops the benchmark.
 - **Isolation.**
-  - Bash runs in Claude Code's sandbox, with no network and no way to leave it. Reads of this repository and Claude's config are denied.
+  - Runs go one at a time, so they can't see or slow each other.
+  - Bash runs in Claude Code's sandbox, with no network and no way to leave it. Reads are denied of:
+    - this repository, and Claude's and the user's config;
+    - the plugins and the behavior check's corpus and results;
+    - the base tree's sources, and every other run's tree and records.
   - The file tools are denied any path outside the tree.
+  - Git runs with no global or system config.
+  - Agents often write scripts to `/tmp` under fixed names. What a run leaves there is moved into its records, so the next run can't read it.
   - The sandbox and the hooks were checked on the subscription: a `curl` was blocked and a read of `/etc/hosts` was denied.
-- **Prompt.** The same for every arm except the diagnostics it quotes, which are the arm's own lint output for the file:
+- **Prompt.** The same for every arm except the diagnostics it quotes, which are the arm's own lint output for the file. A run checks that the prompt quotes the arm's message exactly as `tasks.json` records it:
 
   > `npx oxlint --format agent lib/rules/<rule>.js` reports this:
   >
@@ -67,8 +73,10 @@ Every arm registers the same rule, `complexity/cognitive-complexity`, under the 
 
 - **Records.** Each run keeps:
   - every SDK message, hook events included;
-  - a commit to a separate snapshot repository after every tool call, including edits made through Bash;
-  - the final diff.
+  - a commit to a separate snapshot repository after every tool call, failed ones included, and one more when the session ends. A command that edits the file and then exits non-zero still edited it, and the final commit is what's scored;
+  - the final diff, and anything it left in `/tmp`.
+
+  The snapshots build on one copy of the base tree's objects, kept beside the results, so the results folder holds everything needed to rebuild any step.
 
 ## What counts
 
@@ -76,18 +84,28 @@ Every arm registers the same rule, `complexity/cognitive-complexity`, under the 
 
 - leaving the file unchanged;
 - adding a disable comment that silences the rule;
+- re-indenting text that already mentions a disable comment, which is allowed;
 - editing the test file;
-- changing the rule's behavior;
+- changing the rule's behavior where its tests catch it, and where only the behavior check does;
+- leaving the file unparseable;
 - applying the guard hint, both short of the max and reaching it.
 
 **A success** meets all of these:
 
-1. **The max:** the target file, and every other source file the run wrote, has no function over 15.
-2. **The tests:** the rule's tests pass.
-3. **Integrity:**
+1. **The model finished.** The session ended on its own, not at a cap.
+2. **The max:** the target file, and every other source file the run wrote, parses and has no function over 15.
+3. **The tests:** the rule's tests pass.
+4. **Integrity:**
    - the run changed only the target file and added only files under `lib/rules/`;
-   - it added no disable comments.
-4. **Behavior:** `behavior-worker.cjs` runs the original and the edited rule under every option set the test file uses. It runs them on every test case's code and on ESLint's `lib/` and `tests/fixtures/`, and their reports and fixes must match. This catches a deleted branch the tests don't cover.
+   - no file it wrote has more disable directives than before. Directives are comments that start with one, so moving an existing comment that mentions one doesn't count.
+5. **Behavior:** `behavior-worker.cjs` runs the original and the edited rule under every option set the test file uses, and their reports and fixes must match. It runs them on:
+   - every test case's code;
+   - ESLint's `lib/` and `tests/fixtures/`;
+   - Prettier 3.0.0's `src/`, which ESLint doesn't lint itself with, so rules ESLint enforces on its own code still find something to report.
+
+   Code that doesn't parse is left out, since no rule runs on it. This catches a deleted branch the tests don't cover.
+
+The tests and the behavior check have time limits, of 5 and 30 minutes; a rule left looping fails.
 
 **Outcomes:**
 
@@ -97,26 +115,31 @@ Every arm registers the same rule, `complexity/cognitive-complexity`, under the 
 **Measures, for every run:**
 
 - cost and tokens, including cache writes by lifetime;
-- turns, tool calls and lint runs;
-- lines added and removed, ignoring whitespace;
+- turns, tool calls, the agent's own lint runs and the hook's;
+- lines added and removed, ignoring whitespace and not. Ignoring it is the measure the claim uses; re-indenting a block, which a guard clause does, would otherwise count every line in it;
 - functions added;
 - the highest score left;
 - the subscription's reported usage, when there is one.
 
 ## Analysis
 
-The unit is the task. A task's runs under each arm are averaged first. Intervals are 95% bootstraps: tasks are resampled, then runs within each task, 10,000 times, with a fixed seed.
+The unit is the task. A task's runs under each arm are averaged first. Intervals are bootstraps: tasks are resampled, then runs within each task, 10,000 times, with a fixed seed, over runs in a fixed order. `analyze.mjs` computes everything below and prints the report.
 
 **Primary claim (B against A, Sonnet).** The hint helps if both hold:
 
-- success isn't worse: the lower bound of B − A's success rate is at least −0.10;
-- B is cheaper or changes less: the upper bound of B − A on cost per run, or on lines changed, is below 0.
+- success isn't worse: the lower bound of B − A's success rate, at 95%, is at least −0.10;
+- B is cheaper or changes less: the upper bound of B − A on cost per run, or on lines changed, is below 0. The claim has two chances here, so each interval is at 97.5%.
 
-Cost and lines changed are averaged over **all** runs, so a run that gives up early can't look cheap. Figures over successful runs only are reported too, but don't count towards the claim. The results are also broken out by the kind of first hint (guard or move), as a description.
+Cost and lines changed are averaged over all runs. A run that gives up early costs little and changes little, so a hint that made agents give up would look good on both; the success margin is what rules that out. Figures over successful runs only are reported too, leaving out a task where either arm has no successful run, but don't count towards the claim. The results are also broken out by the kind of first hint (guard or move), as a description.
 
-**Strategy (C against B, split tasks).** Guard if enough ships unless the upper bound of C − B's success rate is below 0. Eight tasks give this test little power, and the results say so.
+**Strategy (C against B, split tasks).** The simulation already chose guard if enough: where the strategies differ, it reaches the max in 89 lint rounds against guard first's 144. Eight tasks can't show it winning with agents, so this comparison checks only that it does no harm. Guard if enough ships unless it is clearly worse than guard first, at 95%, on any of:
 
-**Reporting.** Every cell, every failed run with its reason, the re-runs and the cap hits are reported. A null or negative result is reported as it is.
+- success: the upper bound of C − B is below 0;
+- cost per run, or lines changed: the lower bound of C − B is above 0.
+
+Otherwise guard first stays. The results say how little power the check has.
+
+**Reporting.** Every measure, every failed run with its reason, the re-runs, the cap hits, the cells left with no run and the incomplete blocks are reported. A null or negative result is reported as it is.
 
 ## Running it
 
@@ -124,10 +147,10 @@ Cost and lines changed are averaged over **all** runs, so a run that gives up ea
 
 1. **Build.** Done.
 2. **Check runs.** 18 runs on the subscription confirmed the hooks, the sandbox and the records, and found bugs in the harness that are fixed. A probe block on the API, A and B on all 44 tasks with Sonnet, set the caps. None of these runs count.
-3. **Freeze.** Commit the protocol, the tasks, the caps and the bundle hashes.
+3. **Freeze.** Commit the protocol, the tasks, the caps and the hashes. `tasks.json` records the hashes of the plugins, the harness, the hook and the base tree's lockfile, with the versions of ESLint, Prettier, Oxlint and the SDK. A counted run aborts if any of them differ.
 4. **Counted runs.**
 
-**Caps.** 25 turns and $0.50 per run. In the probe the most any run took was 7 turns and $0.11, so a cap stops only a run that has gone wrong.
+**Settings.** Every counted run uses effort `high`, and caps of 25 turns and $0.50; `counted.mjs` fixes them, and each block records them. In the probe the most any run took was 7 turns and $0.11, so a cap stops only a run that has gone wrong.
 
 **Blocks.** Counted runs go in blocks, each one run of every cell, shuffled within the block with a fixed seed. Sonnet's blocks hold A and B on every task and C on the split tasks, 96 runs, so C runs under the same conditions as the B it's compared with. Haiku's blocks hold A and B. The runs planned:
 
@@ -136,7 +159,21 @@ Cost and lines changed are averaged over **all** runs, so a run that gives up ea
 | Sonnet 5.5 |      5 |  480 |   $22 |
 | Haiku 5.5  |      3 |  264 |    $2 |
 
-Before each block, the runner continues only if the block's cost fits what is left, at the observed mean cost per run plus 25%. Running out of budget therefore always stops at the end of a block. A block that stops part-way, for an account error such as running out of credit, isn't counted.
+Before each block, the runner continues only if the block's cost fits what is left, at the observed mean cost per run plus 25%; before the first, the mean comes from earlier API runs of the same model: the probe for Sonnet, and the run that checked the key for Haiku. Running out of budget therefore always stops at the end of a block. A block is written as incomplete when it starts, and marked complete only when every cell has run. A block that stops part-way isn't counted. It stops for:
+
+- an account error, such as running out of credit;
+- the key appearing in a run's records, which then aren't kept;
+- an error in the harness itself.
+
+A cell whose run and re-run both fail on the service's side has no run in that block; the block lists it, and the report shows it.
+
+The commands, with the key file and budget as set up for the account:
+
+```sh
+node scripts/agent-benchmark/benchmark.mjs counted --label sonnet --model claude-sonnet-5-5 --arms A,B,C --blocks 5 --funding api --key-file <key file> --budget <usd> --estimate-from probe
+node scripts/agent-benchmark/benchmark.mjs counted --label haiku --model claude-haiku-5-5 --arms A,B --blocks 3 --funding api --key-file <key file> --budget <usd> --estimate-from keycheck
+node scripts/agent-benchmark/analyze.mjs --label sonnet
+```
 
 ## What the probe showed
 
@@ -144,9 +181,12 @@ These are the uncounted probe's numbers, recorded here because they shaped the p
 
 - **Success is at the ceiling.** Every one of the 88 runs succeeded, under both arms. The counted runs are unlikely to separate the arms on success, so the claim rests on cost and lines changed, as the analysis already allows.
 - **Agents mostly edit through Bash.** Sonnet often rewrote the file with one script and ran `npx oxlint` and the tests itself, so the hook, which runs after Edit and Write, fired in only some runs. The hint reaches the agent through the prompt and through the lint runs it starts. The snapshots record every step either way.
+- **Scripts in `/tmp`, and commands that fail.** About a quarter of the runs wrote a script to `/tmp` under a fixed name, such as `/tmp/refactor.py`, and many ended a command with a lint run that exits non-zero. Both shaped the harness: the sandbox allows `/tmp` explicitly and each run's leftovers there move into its records, and failed tool calls are snapshotted too.
+- **The probe ran three sessions at a time.** Counted runs go one at a time instead, so no run can read another's files or slow it down.
 
 ## Limits
 
 - **ESLint is likely in the models' training data.** That applies equally to every arm.
-- **The behavior check isn't proof.** It covers the test file's option sets on ESLint's own code and test cases. A rule that rarely reports on that code, such as `valid-typeof`, gets a weaker check. Each run records how many of the checks reported anything.
+- **The behavior check isn't proof.** It covers the test file's option sets on the test cases, ESLint's own code and Prettier's. Some rules find bugs that real code rarely has, such as `valid-typeof`'s misspelled type names, and report on almost nothing outside their tests: 11 of the 44 rules report on at most one corpus check. For those, the check adds little to the tests. Each run records how many checks reported anything, on the test cases and on the corpus apart.
+- **The machine is shared with whatever else runs on it.** Duration is recorded but isn't a measure.
 - **Oxlint's default rules also run in the hook.** They report things such as unused variables in half-finished edits. They are the same for every arm.
