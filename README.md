@@ -1,26 +1,8 @@
 # oxlint-plugin-complexity-hints
 
-Keep code written by coding agents easy for people to review. An [Oxlint](https://oxc.rs/docs/guide/usage/linter) rule scores each function's cognitive complexity, a measure of how hard it is to read. When a function goes over the max, its one-line message names a change to make, almost always with the score the function reaches. A checker, [`complexity-hints`](#for-agents), reports only what the agent's own change is responsible for, so the agent isn't pulled into code outside it.
+Keep code written by coding agents easy for people to review. An [Oxlint](https://oxc.rs/docs/guide/usage/linter) rule scores each function's cognitive complexity, and when one goes over the max, its one-line message names a change to make, almost always with the score the function reaches; a checker, [`complexity-hints`](#for-agents), holds the agent only to what its own change is responsible for.
 
 > **Status:** early development. Nothing is published yet, and the API may change.
-
-**Setting up with a coding agent?** [`install.md`](install.md) walks Claude Code through installing and configuring the plugin, the checker and the hook in your project, asking you where a choice is yours. Pipe it in from your project's directory, or point your agent at the file:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/afterimaginary/oxlint-plugin-complexity-hints/main/install.md | claude
-```
-
-What the evaluations show so far:
-
-- **The hints keep their promise.** On ESLint, Prettier, Vite and Excalidraw, each of the 318 fixes that states a score was applied mechanically, and every one reached exactly that score ([hint evaluation](docs/evaluation/hints.md)).
-- **Following them reaches the max.** Playing the lint loop with the hints alone, applied one at a time, brings 301 of the 319 over-max functions in those codebases to the max; the rest reach a point where the hint gives only a general direction ([simulation](docs/evaluation/strategies.md)).
-- **In a pilot, the agent made smaller changes with them.** Claude Sonnet 5.5 fixed 44 over-max ESLint functions once with this rule's message, as it shipped then, and once with a bare score. Every run succeeded either way, and with this rule's message the changes were about a tenth smaller: 78.5 lines changed on average against 86.8. With one run per function, that's a direction, not an effect size ([agent pilot](docs/evaluation/agent-pilot.md)).
-
-## Why
-
-Every function an agent changes still has to be reviewed by people, and the more complex a function, the longer people tend to take to understand it ([Muñoz Barón et al., 2020](https://arxiv.org/abs/2007.12520)). Cognitive complexity measures how hard a function is to read: each `if`, loop or `catch` adds a point, plus one more for each level it is nested. Scores follow SonarSource's [Cognitive Complexity](https://www.sonarsource.com/docs/CognitiveComplexity.pdf) and match `eslint-plugin-sonarjs`, so they are the numbers SonarQube users already know. It's a proxy, with the [limits](#limits) that implies.
-
-Oxlint gives a plugin's diagnostic one line: no help text, no docs URL. A bare "complexity 20 > 15" leaves an agent guessing which part to change, so this rule's message names the main contributors and one concrete change, with the score the function reaches once it's made.
 
 ## Example
 
@@ -62,9 +44,15 @@ src/shipping.js:1:17: error complexity(cognitive-complexity): Function 'shipping
 
 Once the agent makes the change, the next run scores the function again and suggests the next one.
 
-## Install
+## Quick start
 
-Requires Oxlint 1.83.0 or later, and Node.js `^20.19.0 || >=22.12.0`.
+**With a coding agent:** [`install.md`](install.md) walks Claude Code through installing and configuring the plugin, the checker and the hook in your project, asking you where a choice is yours. Pipe it in from your project's directory, or point your agent at the file:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/afterimaginary/oxlint-plugin-complexity-hints/main/install.md | claude
+```
+
+**By hand:** it requires Oxlint 1.83.0 or later, and Node.js `^20.19.0 || >=22.12.0`.
 
 ```bash
 npm install --save-dev oxlint oxlint-plugin-complexity-hints
@@ -75,6 +63,20 @@ With [Vite+](https://viteplus.dev), which bundles Oxlint (`vp toolchain oxlint` 
 ```bash
 vp add -D oxlint-plugin-complexity-hints
 ```
+
+Then turn on the `recommended` preset, in `.oxlintrc.json` or [another config file](#configure), and add the [agent hook](#for-agents).
+
+## Evidence
+
+- **The hints keep their promise.** On ESLint, Prettier, Vite and Excalidraw, each of the 318 fixes that states a score was applied mechanically, and every one reached exactly that score ([hint evaluation](docs/evaluation/hints.md)).
+- **Following them reaches the max.** Applying the hints one at a time brings 301 of the 319 over-max functions in those codebases to the max; for the rest, the hint ends at a general direction ([simulation](docs/evaluation/strategies.md)).
+- **In a pilot, agents made smaller changes with them.** Fixing 44 over-max ESLint functions, Claude Sonnet 5.5 always succeeded, and its changes were about a tenth smaller with this rule's message than with a bare score: a direction from one run per function, not an effect size ([agent pilot](docs/evaluation/agent-pilot.md)).
+
+## Why
+
+Every function an agent changes still has to be reviewed by people, and the more complex a function, the longer people tend to take to understand it ([Muñoz Barón et al., 2020](https://arxiv.org/abs/2007.12520)). Cognitive complexity measures how hard a function is to read: each `if`, loop or `catch` adds a point, plus one more for each level it is nested. Scores follow SonarSource's [Cognitive Complexity](https://www.sonarsource.com/docs/CognitiveComplexity.pdf) and match `eslint-plugin-sonarjs`, so they are the numbers SonarQube users already know. It's a proxy, with the [limits](#limits) that implies.
+
+Oxlint gives a plugin's diagnostic one line: no help text, no docs URL. A bare "complexity 20 > 15" leaves an agent guessing which part to change, so this rule's message names the main contributors and one concrete change, with the score the function reaches once it's made.
 
 ## Configure
 
@@ -177,7 +179,14 @@ What counts toward the score, how it differs from the whitepaper, why there is n
 }
 ```
 
-With `--claude-code-hook`, the checker reads the hook's input and checks the file an `Edit` or `Write` call changed, or the files a `Bash` command changed, when they're in the project; any other call passes. When something blocks, it exits 2, which passes the diagnostics back to the agent. Claude Code lists the files a `Bash` command changed from version 2.1.269. Without any setting, it does so only in auto and `bypassPermissions` modes. For every mode, set `"bashEditDiffEnabled": true` in your user settings (`~/.claude/settings.json`), since a `true` in a project's settings doesn't count, or `CLAUDE_CODE_BASH_EDIT_DIFF=1` for a session. When the check can't run, for example with no default branch to compare against or the package not installed, the hook fails with another exit code: the user sees the error, and the agent isn't blocked. The checker runs `vp lint` in a Vite+ project, and `oxlint` otherwise. [The spec](docs/specs/scoped-checker.md) has its options and output.
+With `--claude-code-hook`, the checker:
+
+- checks the file an `Edit` or `Write` call changed, or the files a `Bash` command changed, when they're in the project; any other call passes;
+- exits 2 when something blocks, which passes the diagnostics back to the agent;
+- fails with another exit code when the check can't run, for example with no default branch to compare against or the package not installed: the user sees the error, and the agent isn't blocked;
+- runs `vp lint` in a Vite+ project, and `oxlint` otherwise.
+
+Claude Code lists the files a `Bash` command changed from version 2.1.269, and without any setting only in auto and `bypassPermissions` modes. For every mode, set `"bashEditDiffEnabled": true` in your user settings (`~/.claude/settings.json`), since a `true` in a project's settings doesn't count, or `CLAUDE_CODE_BASH_EDIT_DIFF=1` for a session. [The spec](docs/specs/scoped-checker.md) has the checker's options and output.
 
 **Gate the commit too.** Run `npx --no complexity-hints` before each commit or in CI: it exits 1 when something blocks, and `--no` keeps `npx` from fetching a package of that name when the project's own isn't installed. In a `pull_request` workflow, CI needs the history back to the merge base, the project's dependencies, and the base named:
 
@@ -189,8 +198,6 @@ With `--claude-code-hook`, the checker reads the hook's input and checks the fil
 - run: npm ci
 - run: npx --no complexity-hints --base origin/${{ github.base_ref }}
 ```
-
-Other agents with an after-edit hook should be able to run the same command, with the edited files as arguments, or run it before committing, but that isn't tested.
 
 **Tell the agent how to respond.** For example, in `CLAUDE.md` or `AGENTS.md`:
 
