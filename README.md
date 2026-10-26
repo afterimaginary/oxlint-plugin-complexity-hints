@@ -143,6 +143,8 @@ What counts toward the score, how it differs from the whitepaper, why there is n
 
 ## For agents
 
+**Claude Code only, for now.** The hook, the guidance below and the agent pilot that informed them are written for and tested with Claude Code. The checker is a plain command that any agent or hook can run, but other agents' setups aren't documented or tested yet.
+
 **Check each change as the agent makes it.** The package's `complexity-hints` command runs the project's Oxlint on what changed since the branch left the default branch, and reports only what the change is responsible for: a function the change touches, when the change also touches the code the diagnostic's fix points at. Functions the change didn't touch aren't reported, so the agent isn't pulled into refactoring code outside its task. In Claude Code, a `PostToolUse` hook in `.claude/settings.json` runs it after each edit, and exits 2 to pass what blocks back to the agent:
 
 ```json
@@ -176,7 +178,7 @@ It needs [`jq`](https://jqlang.org). It checks the file an `Edit` or `Write` cal
 - run: npx --no complexity-hints --base origin/${{ github.base_ref }}
 ```
 
-Other agents with an after-edit hook can run the same command, with the edited files as arguments, or run it before committing.
+Other agents with an after-edit hook should be able to run the same command, with the edited files as arguments, or run it before committing, but that isn't tested.
 
 **Tell the agent how to respond.** For example, in `CLAUDE.md` or `AGENTS.md`:
 
@@ -193,6 +195,7 @@ By default, a function the change touches isn't blocked when its fix points at l
 - **Cognitive complexity is a proxy.** Across about 24,000 ratings of 427 snippets, it correlates with how long people take to understand code and how understandable they rate it, with mixed results for whether they understand it correctly ([Muñoz Barón et al., 2020](https://arxiv.org/abs/2007.12520)). It predicts understandability about as well as older measures such as lines of code and cyclomatic complexity, not better ([Lavazza et al., 2023](https://doi.org/10.1016/j.jss.2022.111561)). A function under the max isn't necessarily easy to read, and one over it isn't always worth changing.
 - **Moving code has a cost.** Moving a region into a new function leaves both functions scoring less than the original, but the reader now follows the logic across two of them. A guard clause has no such reading cost, so the rule suggests one whenever it alone brings the function to the max.
 - **The score is checked, not the behavior.** The hint evaluation checks that each fix reaches the scores it states and still parses. Whether the change preserves behavior is up to the agent and the project's tests.
+- **The agent setup targets Claude Code.** The hook and the instructions in [For agents](#for-agents) are tested only with Claude Code.
 - **Oxlint's JS plugin API is in alpha.** Oxlint's [JS plugins](https://oxc.rs/docs/guide/usage/linter/js-plugins.html) are under active development and not subject to semver, so an Oxlint upgrade can break the plugin before a fix ships here.
 
 ## Development
