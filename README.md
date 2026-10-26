@@ -143,20 +143,18 @@ What counts toward the score, how it differs from the whitepaper, why there is n
 
 ## For agents
 
-**Keep the threshold in config.** Set `max` once in the config file, and tell the agent not to raise it or add `oxlint-disable` comments. Each diagnostic names a change to make instead. Almost always it's a concrete change, with the score it reaches. In the rare case that no guard clause or region to move qualifies, it gives a general direction, such as splitting the code around a line into smaller functions.
-
-**Lint each file as the agent edits it.** Oxlint's `agent` format prints one line per diagnostic. Oxlint already picks it when it detects an agent, but naming it keeps the hook independent of that. In Claude Code, a `PostToolUse` hook in `.claude/settings.json` that exits 2 passes its output back to the agent:
+**Check each change as the agent makes it.** The package's `complexity-hints` command runs the project's Oxlint on what changed since the branch left the default branch, and reports only what the change is responsible for: a function the change touches, when the change also touches the code the diagnostic's fix points at. Functions the change didn't touch aren't reported, so the agent isn't pulled into refactoring code outside its task. In Claude Code, a `PostToolUse` hook in `.claude/settings.json` runs it after each edit, and exits 2 to pass what blocks back to the agent:
 
 ```json
 {
 	"hooks": {
 		"PostToolUse": [
 			{
-				"matcher": "Edit|Write",
+				"matcher": "Edit|Write|Bash",
 				"hooks": [
 					{
 						"type": "command",
-						"command": "f=$(jq -r .tool_input.file_path); npx oxlint --format agent --no-error-on-unmatched-pattern \"$f\" >&2 || exit 2"
+						"command": "command -v jq >/dev/null || { echo 'complexity-hints hook: jq not found' >&2; exit 1; }; cd \"$CLAUDE_PROJECT_DIR\" && jq -r '(.tool_input.file_path // .tool_response.bashEditDiff.changedFiles[]?) | select(startswith(env.CLAUDE_PROJECT_DIR + \"/\"))' | { set --; while IFS= read -r f; do set -- \"$@\" \"$f\"; done; [ $# -gt 0 ] || exit 0; node_modules/.bin/complexity-hints \"$@\" >&2; case $? in 0) ;; 1) exit 2 ;; *) exit 1 ;; esac; }"
 					}
 				]
 			}
@@ -165,9 +163,30 @@ What counts toward the score, how it differs from the whitepaper, why there is n
 }
 ```
 
-It needs [`jq`](https://jqlang.org). Files Oxlint doesn't lint, such as Markdown, pass through. In a Vite+ project, run `vp lint` in place of `npx oxlint`, with the same flags: the `oxlint` binary Vite+ installs is for editors only, and `vp lint` is what reads the `lint` block of `vite.config.ts`. Other agents with an after-edit hook can run the same command.
+It needs [`jq`](https://jqlang.org). It checks the file an `Edit` or `Write` call changed, or the files a `Bash` command changed, when they're in the project; any other call passes. Claude Code lists the files a `Bash` command changed from version 2.1.269, and in every permission mode only with `"bashEditDiffEnabled": true` in your user settings (`~/.claude/settings.json`); a project's settings can't turn it on. When the check can't run, for example without `jq` or with no default branch to compare against, the hook exits 1: the user sees the error, and the agent isn't blocked. The checker runs `vp lint` in a Vite+ project, and `oxlint` otherwise. [The spec](docs/specs/scoped-checker.md) has its options and output.
 
-For now, the hook lints the whole edited file, so it also reports over-max functions the edit didn't touch; a checker scoped to the change is planned. Tell the agent to leave those alone unless its task covers them: restructuring code outside the change makes the change harder to review.
+**Gate the commit too.** Run `npx --no complexity-hints` before each commit or in CI: it exits 1 when something blocks, and `--no` keeps `npx` from fetching a package of that name when the project's own isn't installed. In a `pull_request` workflow, CI needs the history back to the merge base, the project's dependencies, and the base named:
+
+```yaml
+- uses: actions/checkout@v7
+  with:
+    fetch-depth: 0
+- uses: actions/setup-node@v7
+- run: npm ci
+- run: npx --no complexity-hints --base origin/${{ github.base_ref }}
+```
+
+Other agents with an after-edit hook can run the same command, with the edited files as arguments, or run it before committing.
+
+**Tell the agent how to respond.** For example, in `CLAUDE.md` or `AGENTS.md`:
+
+- Keep refactoring within the change. Leave over-max functions outside it alone unless the task covers them.
+- When the change pushes a function over the max, or touches one already over it, first restructure that function in a behavior-preserving commit of its own, then make the change, so each can be reviewed on its own.
+- Don't raise `max` or add `oxlint-disable` comments. Each diagnostic names a change to make instead: almost always a concrete one, with the score it reaches, and otherwise a general direction, such as splitting the code around a line into smaller functions.
+
+By default, a function the change touches isn't blocked when its fix points at lines the change didn't touch: run by hand, the checker lists it as a note. `--strict` blocks it too.
+
+**Parallel agents need their own worktrees.** The change is everything in the working tree since the base, whoever made it, so agents editing one checkout at once are each held to the others' edits.
 
 ## Limits
 
