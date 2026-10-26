@@ -26,6 +26,6 @@ Bringing a function's score down means restructuring its control flow: extractin
 
 ## Consequences
 
-- The plugin's surface is one rule and its options, which keeps the configuration and documentation small.
+- The plugin's surface is one rule and its options, which keeps the configuration and documentation small. ADR-0006 adds a command alongside the rule; the rule is still the only one.
 - Diagnostics have to carry the fix guidance themselves, in the message text.
 - Adding another rule later stays possible and purely additive; it would need its own ADR showing it covers something the existing Oxlint rules do not.

@@ -21,6 +21,10 @@ oxlint-plugin-complexity-hints is an Oxlint JS plugin, published as an ES module
 
 `src/recommended.ts` holds the `recommended` preset (ADR-0003) as a typed config, published as `oxlint-plugin-complexity-hints/recommended` for `extends` in `oxlint.config.ts`. A `build:done` hook in the `pack` block of `vite.config.ts` reads the built module back and writes the same object to `recommended.json` at the package root, for `.oxlintrc.json`. The TypeScript file is the one source of both, and `tests/recommended.test.ts` builds the package and lints through each form as an installed copy.
 
+## Scoped checker
+
+`src/checker/` is the `complexity-hints` command (ADR-0006), published as the package's `bin` from `dist/checker/cli.mjs`. It lists the lines a change touches with `git diff`, runs the project's own Oxlint on the changed files, and keeps the diagnostics the change is responsible for, reading each function's span and its fix's target from the rule's message. The rule knows nothing about it. Its behavior is in [`docs/specs/scoped-checker.md`](specs/scoped-checker.md), and its design in [`docs/designs/scoped-checker.md`](designs/scoped-checker.md).
+
 ## Scoring
 
 The scoring rules are specified in [`docs/specs/scoring.md`](specs/scoring.md), and the message in [`docs/specs/diagnostics.md`](specs/diagnostics.md). The code splits them like this:
@@ -50,6 +54,7 @@ Tests run the rule through Oxlint's `RuleTester` over `tests/fixtures/`, which l
 - `tests/cli.test.ts` runs the repository's Oxlint binary over `tests/fixtures/cli/` and snapshots what users and agents see: every diagnostic in `--format agent`, one in the default format, and the exit codes. Its config is `tests/fixtures/cli/oxlintrc.json`, not `.oxlintrc.json`, so Oxlint never picks it up on its own. It always names the format, since Oxlint switches to `agent` when it detects an agent.
 - `tests/docs.test.ts` lints the code examples in `README.md` and `docs/rules/cognitive-complexity.md`, and expects exactly the diagnostics shown beside them, so those diagnostics can't fall behind the rule. The README example runs with the preset's rules and Oxlint's default categories, as a user would have them.
 - `tests/hint-promises.test.ts` applies every fix hint in the CLI fixtures with `scripts/apply-hints.ts` and lints the result, so a hint whose promised scores are wrong fails `verify`. The fixtures cover every kind of fix and every obstacle clause.
+- `tests/checker.test.ts` runs the checker from source on temporary git repositories, with the repository's Oxlint and the plugin from source, and covers each row of the checker spec, the setup failures, and every fix wording the checker reads.
 - `tests/script-block.test.ts` covers where an embedded script block starts, for the cases the CLI can't show: Windows line endings, and the fallbacks such as an unsaved buffer.
 
 ## Toolchain
