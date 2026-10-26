@@ -4,7 +4,11 @@ Keep code written by coding agents easy for people to review. An [Oxlint](https:
 
 > **Status:** early development. Nothing is published yet, and the API may change.
 
-**Setting up with a coding agent?** Point it at [`docs/agent-setup.md`](docs/agent-setup.md): it walks the agent through installing and configuring the plugin, the checker and the Claude Code hook in your project.
+**Setting up with a coding agent?** [`install.md`](install.md) walks Claude Code through installing and configuring the plugin, the checker and the hook in your project, asking you where a choice is yours. Pipe it in from your project's directory, or point your agent at the file:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/afterimaginary/oxlint-plugin-complexity-hints/main/install.md | claude
+```
 
 What the evaluations show so far:
 

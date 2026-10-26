@@ -497,7 +497,7 @@ describe("the Claude Code hook in the README and the agent setup guide", () => {
 	const command = JSON.parse(settings("README.md")).hooks.PostToolUse[0].hooks[0].command as string;
 
 	test("the guide gives the README's hook", () => {
-		expect(settings("docs/agent-setup.md")).toBe(settings("README.md"));
+		expect(settings("install.md")).toBe(settings("README.md"));
 	});
 
 	/** A repository whose `node_modules/.bin/complexity-hints` runs the checker from source. */
