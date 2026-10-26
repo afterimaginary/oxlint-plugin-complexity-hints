@@ -40,4 +40,5 @@ The diagnostic text is what sets this plugin apart, so the next milestone, "Revi
 - Public-facing repository (see `CONTRIBUTING.md`): issues, PRs and commits must be presentable, with no personal identifiers.
 - Work order: "Reviewable agent changes" (#38 to #46), then "Launch" (#19, #20), then "After launch" (#17, #47). Within a milestone, take the lowest-numbered issue whose dependencies (listed in each issue) are closed.
 - Every hint states the score it reaches, and `tests/hint-promises.test.ts` checks that promise. A new hint kind ships only with that check.
+- The agent setup (hook, guidance, pilot) targets and is tested with Claude Code only, as the README says. Other agents are to be revisited later.
 - Agents stay within their change: diagnostics outside it don't block by default (#44), and refactoring goes in its own behavior-preserving commit (#45).
