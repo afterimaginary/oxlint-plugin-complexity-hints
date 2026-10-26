@@ -487,12 +487,18 @@ describe("when the check can't run", () => {
 
 // The README's command, run as Claude Code runs it: with `sh`, the hook's input on stdin,
 // and `CLAUDE_PROJECT_DIR` set.
-describe("the README's Claude Code hook", () => {
-	const settings = /\n## For agents\n[\s\S]*?^```json\n([\s\S]*?)^```$/m.exec(
-		readFileSync(join(root, "README.md"), "utf8"),
-	)![1]!;
+describe("the Claude Code hook in the README and the agent setup guide", () => {
+	/** The hook settings in `doc`: its first JSON block holding a `PostToolUse` hook. */
+	const settings = (doc: string) =>
+		[...readFileSync(join(root, doc), "utf8").matchAll(/^```json\n([\s\S]*?)^```$/gm)]
+			.map(([, body]) => body!)
+			.find((body) => body.includes('"PostToolUse"'))!;
 
-	const command = JSON.parse(settings).hooks.PostToolUse[0].hooks[0].command as string;
+	const command = JSON.parse(settings("README.md")).hooks.PostToolUse[0].hooks[0].command as string;
+
+	test("the guide gives the README's hook", () => {
+		expect(settings("docs/agent-setup.md")).toBe(settings("README.md"));
+	});
 
 	/** A repository whose `node_modules/.bin/complexity-hints` runs the checker from source. */
 	function installed(files: Record<string, string>) {
@@ -511,12 +517,12 @@ describe("the README's Claude Code hook", () => {
 	}
 
 	// Run from elsewhere: Claude Code's working directory needn't be the project's.
-	function hook(dir: string, input: object, PATH = process.env.PATH) {
-		const result = spawnSync("/bin/sh", ["-c", command], {
-			cwd: tmpdir(),
+	function hook(dir: string, input: object | string, shell = command, cwd = tmpdir()) {
+		const result = spawnSync("/bin/sh", ["-c", shell], {
+			cwd,
 			encoding: "utf8",
-			env: { ...env, CLAUDE_PROJECT_DIR: dir, PATH },
-			input: JSON.stringify(input),
+			env: { ...env, CLAUDE_PROJECT_DIR: dir },
+			input: typeof input === "string" ? input : JSON.stringify(input),
 			timeout: 60_000,
 		});
 
@@ -566,18 +572,27 @@ describe("the README's Claude Code hook", () => {
 		expect(hook(repo.dir, bash())).toMatchObject({ status: 0, stderr: "" });
 	});
 
-	test("a file outside the project passes", () => {
+	test("a file outside the project, or the project's directory itself, passes", () => {
 		const repo = installed({ "a.js": BUSY });
 
 		repo.edit("a.js", "seen.push(x);", "seen.push(x + 1);");
 
-		expect(hook(repo.dir, edit(join(tmpdir(), "notes.js")))).toMatchObject({
-			status: 0,
-			stderr: "",
-		});
+		for (const input of [edit(join(tmpdir(), "notes.js")), bash([repo.dir])]) {
+			expect(hook(repo.dir, input)).toMatchObject({ status: 0, stderr: "" });
+		}
 	});
 
-	test("a check that can't run exits 1, which doesn't block the agent", () => {
+	test("without CLAUDE_PROJECT_DIR, the project is the current directory", () => {
+		const repo = installed({ "a.js": BUSY });
+
+		repo.edit("a.js", "seen.push(x);", "seen.push(x + 1);");
+
+		const shell = `unset CLAUDE_PROJECT_DIR; node_modules/.bin/complexity-hints --claude-code-hook`;
+
+		expect(hook(repo.dir, edit(join(repo.dir, "a.js")), shell, repo.dir).status).toBe(2);
+	});
+
+	test("a check that can't run fails without exit 2, so it doesn't block the agent", () => {
 		const repo = installed({ "a.js": BUSY });
 
 		repo.edit("a.js", "seen.push(x);", "seen.push(x + 1);");
@@ -589,14 +604,22 @@ describe("the README's Claude Code hook", () => {
 			stderr: expect.stringContaining("--base"),
 		});
 
-		expect(hook(repo.dir, edit(join(repo.dir, "a.js")), "/nonexistent")).toMatchObject({
+		for (const input of ["not json", "null"]) {
+			expect(hook(repo.dir, input)).toMatchObject({
+				status: 1,
+				stderr: expect.stringContaining("hook's JSON input"),
+			});
+		}
+
+		expect(hook(repo.dir, edit(join(repo.dir, "a.js")), `${command} a.js`)).toMatchObject({
 			status: 1,
-			stderr: expect.stringContaining("jq not found"),
+			stderr: expect.stringContaining("not arguments"),
 		});
 
 		rmSync(join(repo.dir, "node_modules"), { recursive: true });
 
-		expect(hook(repo.dir, edit(join(repo.dir, "a.js"))).status).toBe(1);
+		// Not installed: the shell's 127, which Claude Code shows the user without blocking.
+		expect(hook(repo.dir, edit(join(repo.dir, "a.js"))).status).toBe(127);
 	});
 });
 

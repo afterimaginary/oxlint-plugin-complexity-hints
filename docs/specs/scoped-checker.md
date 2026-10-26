@@ -6,15 +6,17 @@
 
 ```
 complexity-hints [--base <ref>] [--strict] [--oxlint <path>] [<path>...]
+complexity-hints --claude-code-hook [--base <ref>] [--strict] [--oxlint <path>]
 ```
 
-| Option            | Meaning                                                                                            |
-| ----------------- | -------------------------------------------------------------------------------------------------- |
-| `--base <ref>`    | Compare against the merge base of `HEAD` and `<ref>`. By default, `<ref>` is the default branch.   |
-| `--strict`        | Block on every over-max function the change touches, wherever its fix points.                      |
-| `--oxlint <path>` | Run this Oxlint binary, or `vp`, instead of searching for one. It runs from the current directory. |
-| `<path>...`       | Check only these files, or the files in these directories, of those the change touched.            |
-| `--help`          | Print usage and exit 0.                                                                            |
+| Option               | Meaning                                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| `--base <ref>`       | Compare against the merge base of `HEAD` and `<ref>`. By default, `<ref>` is the default branch.   |
+| `--strict`           | Block on every over-max function the change touches, wherever its fix points.                      |
+| `--oxlint <path>`    | Run this Oxlint binary, or `vp`, instead of searching for one. It runs from the current directory. |
+| `<path>...`          | Check only these files, or the files in these directories, of those the change touched.            |
+| `--claude-code-hook` | Run as a Claude Code `PostToolUse` hook. See [Claude Code hook](#claude-code-hook).                |
+| `--help`             | Print usage and exit 0.                                                                            |
 
 ## The change
 
@@ -76,3 +78,12 @@ Everything goes to stdout. Errors about the setup go to stderr.
 | 0    | Nothing blocks. Notes may have printed. With no changed file to lint, Oxlint doesn't run.                                                                                                       |
 | 1    | Something blocks.                                                                                                                                                                               |
 | 2    | The check couldn't run: not in a git repository, no base, git failing, no Oxlint found, Oxlint output that isn't its JSON report, a path outside the repository, an unknown option, or a crash. |
+
+## Claude Code hook
+
+With `--claude-code-hook`, the checker runs as a Claude Code `PostToolUse` hook, as the README's [For agents](../../README.md#for-agents) section sets it up:
+
+- **Input.** It reads the hook's JSON input from stdin. The files are `tool_input.file_path` for an `Edit` or `Write` call, or else `tool_response.bashEditDiff.changedFiles`, the files a `Bash` command changed, when Claude Code recorded them.
+- **Scope.** Only files inside the project, `CLAUDE_PROJECT_DIR` or else the current directory, are checked, as if given as paths. A relative path is taken from the project's directory, and the project's directory itself doesn't count as a file. The check runs from the project's directory, so `--oxlint` runs from there too. With none, it exits 0 without running Git or Oxlint, so a call that changed no project file costs nothing.
+- **Output.** Everything goes to stderr, which Claude Code shows the agent on exit 2.
+- **Exit codes.** 2 when something blocks, so Claude Code passes the diagnostics to the agent. 0 when nothing does. 1 when the check can't run, including input that isn't a hook's JSON or paths given as arguments, so Claude Code shows the user the error without blocking the agent.

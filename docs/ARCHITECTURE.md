@@ -4,14 +4,15 @@ oxlint-plugin-complexity-hints is an Oxlint JS plugin, published as an ES module
 
 ## Layout
 
-| Path               | Contents                                                                                                                                                    |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/`             | Plugin source. Imports the plugin API from `@oxlint/plugins` so the package works in plain Oxlint.                                                          |
-| `tests/`           | Vitest suites, run with `vp test`.                                                                                                                          |
-| `docs/rules/`      | User docs for each rule, linked from the README. The specs in `docs/specs/` are the exact rules.                                                            |
-| `scripts/`         | Checks on the built package, run by `verify`: its contents and a load on the Node floor. Also the hint evaluation and the strategy simulation, run by hand. |
-| `dist/`            | Build output from `vp pack`. Not committed.                                                                                                                 |
-| `recommended.json` | The preset for `.oxlintrc.json`, written by `vp pack`. Not committed.                                                                                       |
+| Path                  | Contents                                                                                                                                                    |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/`                | Plugin source. Imports the plugin API from `@oxlint/plugins` so the package works in plain Oxlint.                                                          |
+| `tests/`              | Vitest suites, run with `vp test`.                                                                                                                          |
+| `docs/rules/`         | User docs for each rule, linked from the README. The specs in `docs/specs/` are the exact rules.                                                            |
+| `docs/agent-setup.md` | Setup instructions written for a coding agent to follow in a user's project, linked from the top of the README.                                             |
+| `scripts/`            | Checks on the built package, run by `verify`: its contents and a load on the Node floor. Also the hint evaluation and the strategy simulation, run by hand. |
+| `dist/`               | Build output from `vp pack`. Not committed.                                                                                                                 |
+| `recommended.json`    | The preset for `.oxlintrc.json`, written by `vp pack`. Not committed.                                                                                       |
 
 ## Plugin
 
@@ -23,7 +24,7 @@ oxlint-plugin-complexity-hints is an Oxlint JS plugin, published as an ES module
 
 ## Scoped checker
 
-`src/checker/` is the `complexity-hints` command (ADR-0006), published as the package's `bin` from `dist/checker/cli.mjs`. It lists the lines a change touches with `git diff`, runs the project's own Oxlint on the changed files, and keeps the diagnostics the change is responsible for, reading each function's span and its fix's target from the rule's message. The rule knows nothing about it. Its behavior is in [`docs/specs/scoped-checker.md`](specs/scoped-checker.md), and its design in [`docs/designs/scoped-checker.md`](designs/scoped-checker.md).
+`src/checker/` is the `complexity-hints` command (ADR-0006), published as the package's `bin` from `dist/checker/cli.mjs`. It lists the lines a change touches with `git diff`, runs the project's own Oxlint on the changed files, and keeps the diagnostics the change is responsible for, reading each function's span and its fix's target from the rule's message. With `--claude-code-hook`, it runs as a Claude Code hook, taking the files from the hook's input. The rule knows nothing about it. Its behavior is in [`docs/specs/scoped-checker.md`](specs/scoped-checker.md), and its design in [`docs/designs/scoped-checker.md`](designs/scoped-checker.md).
 
 ## Scoring
 
@@ -54,7 +55,7 @@ Tests run the rule through Oxlint's `RuleTester` over `tests/fixtures/`, which l
 - `tests/cli.test.ts` runs the repository's Oxlint binary over `tests/fixtures/cli/` and snapshots what users and agents see: every diagnostic in `--format agent`, one in the default format, and the exit codes. Its config is `tests/fixtures/cli/oxlintrc.json`, not `.oxlintrc.json`, so Oxlint never picks it up on its own. It always names the format, since Oxlint switches to `agent` when it detects an agent.
 - `tests/docs.test.ts` lints the code examples in `README.md` and `docs/rules/cognitive-complexity.md`, and expects exactly the diagnostics shown beside them, so those diagnostics can't fall behind the rule. The README example runs with the preset's rules and Oxlint's default categories, as a user would have them.
 - `tests/hint-promises.test.ts` applies every fix hint in the CLI fixtures with `scripts/apply-hints.ts` and lints the result, so a hint whose promised scores are wrong fails `verify`. The fixtures cover every kind of fix and every obstacle clause.
-- `tests/checker.test.ts` runs the checker from source on temporary git repositories, with the repository's Oxlint and the plugin from source, and covers each row of the checker spec, the setup failures, and every fix wording the checker reads. It also runs the README's Claude Code hook command with `sh`, against a stand-in install that runs the checker from source.
+- `tests/checker.test.ts` runs the checker from source on temporary git repositories, with the repository's Oxlint and the plugin from source, and covers each row of the checker spec, the setup failures, and every fix wording the checker reads. It also runs the README's Claude Code hook command with `sh`, against a stand-in install that runs the checker from source, and checks that `docs/agent-setup.md` gives the same hook.
 - `tests/script-block.test.ts` covers where an embedded script block starts, for the cases the CLI can't show: Windows line endings, and the fallbacks such as an unsaved buffer.
 
 ## Toolchain

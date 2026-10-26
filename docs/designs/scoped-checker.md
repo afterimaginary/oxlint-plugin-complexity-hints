@@ -12,6 +12,8 @@ How `complexity-hints` works. What it does is specified in [`docs/specs/scoped-c
 4. sorts each file's diagnostics into blocks and notes (`scope.ts`);
 5. prints them and exits with the result.
 
+With `--claude-code-hook`, the files come from the hook's input instead (`claude-code.ts`), filtered to the project's directory, and the run prints to stderr and remaps the exit codes, as the spec's [Claude Code hook](../specs/scoped-checker.md#claude-code-hook) says.
+
 Every module uses Node built-ins only, so the package keeps no runtime dependencies. A `SetupError` from any step, or anything unexpected, exits 2, so a broken setup is never read as a finding.
 
 ## Changed lines (`changes.ts`)
