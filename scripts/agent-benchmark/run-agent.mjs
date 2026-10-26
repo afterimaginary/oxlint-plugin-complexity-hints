@@ -35,6 +35,11 @@ Fix it without changing what the rule does. Keep the max where it is, and don't 
 const INFRASTRUCTURE =
 	/rate.?limit|overloaded|529|429|500 |internal server error|timed? ?out|ECONNRESET|socket hang up/i;
 
+const API_ERROR = /API Error: (\d{3}).*/;
+
+/** Result subtypes that are the model's doing: it finished, or ran out of turns or budget. */
+const MODEL_OUTCOMES = ["success", "error_max_turns", "error_max_budget_usd"];
+
 const STOP = /credit balance is too low|usage limit|spend limit|out of (?:extra )?usage/i;
 
 /**
@@ -364,7 +369,9 @@ export function scoreRun({ record, workspace }, task) {
  * a service failure is re-run once. "stop" means the account can't run more.
  */
 export function classify(record) {
-	const text = [record.thrown, record.result?.text, ...(record.result?.errors ?? [])].join("\n");
+	// What the service and the SDK said, as opposed to what the model wrote.
+	const service = [record.thrown, ...(record.result?.errors ?? [])].join("\n");
+	const text = [service, record.result?.text].join("\n");
 
 	if (record.aborted) {
 		return { kind: "aborted", reason: record.aborted.join("; ") };
@@ -374,18 +381,32 @@ export function classify(record) {
 		return { kind: "stop", reason: text.match(STOP)[0] };
 	}
 
-	const subtype = record.result?.subtype;
+	// An error in place of a reply: rate limits and outages pass, anything else means the
+	// account or the request is wrong, and no further run would go better.
+	const status = API_ERROR.exec(text);
 
-	if (
-		["success", "error_max_turns", "error_max_budget_usd"].includes(subtype) &&
-		!INFRASTRUCTURE.test(record.result?.text ?? "")
-	) {
-		return { kind: "model", reason: subtype };
+	if (status) {
+		return status[1] === "429" || status[1].startsWith("5")
+			? { kind: "infrastructure", reason: `API error ${status[1]}` }
+			: { kind: "stop", reason: status[0].slice(0, 300) };
+	}
+
+	if (Object.keys(record.modelsSeen).every((model) => model === "<synthetic>")) {
+		return { kind: "infrastructure", reason: "no reply from the model" };
 	}
 
 	if (record.result?.stopReason === "refusal") {
 		return { kind: "infrastructure", reason: "refusal" };
 	}
 
-	return { kind: "infrastructure", reason: subtype ?? (text.trim().split("\n")[0] || "no result") };
+	const subtype = record.result?.subtype;
+
+	if (MODEL_OUTCOMES.includes(subtype) && !INFRASTRUCTURE.test(service)) {
+		return { kind: "model", reason: subtype };
+	}
+
+	return {
+		kind: "infrastructure",
+		reason: subtype ?? (service.trim().split("\n")[0] || "no result"),
+	};
 }

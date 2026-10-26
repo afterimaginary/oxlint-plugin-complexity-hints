@@ -1,7 +1,8 @@
 // The agent benchmark's command line. See docs/designs/agent-benchmark.md.
 //
 //   node scripts/agent-benchmark/benchmark.mjs selftest
-//     Scores scripted edits, with no model, to check the scoring catches what it should.
+//     Scores scripted edits and classifies sample outcomes, with no model, to check both
+//     catch what they should.
 //   node scripts/agent-benchmark/benchmark.mjs check --label <name> --runs <rule>:<arm>,...
 //       [--model <id>] [--effort <level>] [--max-turns <n>] [--max-budget <usd>]
 //     Runs the listed task and arm pairs on the subscription, one at a time.
@@ -16,7 +17,7 @@ import { lint } from "../eval-repos.mjs";
 import { bundleDir, prepare } from "./prepare.mjs";
 import { counted } from "./counted.mjs";
 import { findTask, keep, loadTasks, summarize } from "./records.mjs";
-import { initSnapshots, runAgent, scoreRun } from "./run-agent.mjs";
+import { classify, initSnapshots, runAgent, scoreRun } from "./run-agent.mjs";
 import { score, snapshotGit } from "./score.mjs";
 import { createWorkspace, removeWorkspace } from "./workspace.mjs";
 
@@ -107,6 +108,77 @@ const EDITS = [
 	},
 ];
 
+/** Run records, cut down to what `classify` reads, each with the outcome it should get. */
+const RUN = {
+	modelsSeen: { "claude-sonnet-5-5": 3 },
+	result: { subtype: "success", text: "Done; one test timed out at first." },
+};
+
+const NO_REPLY = { "<synthetic>": 1 };
+
+const OUTCOMES = [
+	{ name: "the model finished", record: RUN, expect: "model" },
+	{
+		name: "the model ran out of turns",
+		record: {
+			...RUN,
+			result: { subtype: "error_max_turns" },
+			thrown: "Error: Reached maximum number of turns (100)",
+		},
+		expect: "model",
+	},
+	{
+		name: "a key the API rejects",
+		record: {
+			modelsSeen: NO_REPLY,
+			result: {
+				subtype: "success",
+				text: "API Error: 400 This API key is not scoped to a workspace",
+			},
+		},
+		expect: "stop",
+	},
+	{
+		name: "no credit left",
+		record: {
+			modelsSeen: NO_REPLY,
+			result: { subtype: "success", text: "Credit balance is too low" },
+		},
+		expect: "stop",
+	},
+	{
+		name: "rate limited",
+		record: {
+			modelsSeen: NO_REPLY,
+			result: { subtype: "success", text: "API Error: 429 rate limited" },
+		},
+		expect: "infrastructure",
+	},
+	{
+		name: "overloaded mid-run",
+		record: {
+			modelsSeen: { ...RUN.modelsSeen, ...NO_REPLY },
+			result: { subtype: "success", text: "API Error: 529 Overloaded" },
+		},
+		expect: "infrastructure",
+	},
+	{
+		name: "the session crashed",
+		record: { ...RUN, result: { subtype: "error_during_execution" } },
+		expect: "infrastructure",
+	},
+	{
+		name: "a refusal",
+		record: { ...RUN, result: { subtype: "success", stopReason: "refusal" } },
+		expect: "infrastructure",
+	},
+	{
+		name: "no result at all",
+		record: { modelsSeen: {}, thrown: "Error: socket hang up" },
+		expect: "infrastructure",
+	},
+];
+
 function replaceIn(work, file, from, to) {
 	const path = join(work, file);
 	const text = readFileSync(path, "utf8");
@@ -170,6 +242,14 @@ async function selftest() {
 		} finally {
 			removeWorkspace(workspace);
 		}
+	}
+
+	for (const { name, record, expect } of OUTCOMES) {
+		const { kind } = classify(record);
+
+		failures += kind === expect ? 0 : 1;
+
+		console.log(`${kind === expect ? "ok  " : "FAIL"} ${name}: ${kind}`);
 	}
 
 	process.exitCode = failures > 0 ? 1 : 0;
