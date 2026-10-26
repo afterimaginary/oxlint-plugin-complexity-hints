@@ -13,7 +13,7 @@ Oxlint's JS plugin diagnostics have no `help` text and no docs URL, and `--forma
 For example:
 
 ```
-Function 'deep' has cognitive complexity 10, over the max of 0; main contributors: 'if' at line 20 (+4, nested 3 deep), 'while' at line 19 (+3, nested 2 deep), 'for...of' at line 18 (+2, nested 1 deep); fix: invert the 'if' at line 17 into a guard clause that returns early, so its body moves up a level; this one drops to 7.
+Function 'deep' has cognitive complexity 10, over the max of 0; main contributors: 'if' at line 20 (+4, nested 3 deep), 'while' at line 19 (+3, nested 2 deep), 'for...of' at line 18 (+2, nested 1 deep); fix: move lines 19-22 (the body of the 'for...of' at line 18) into a new function; this one drops to 3 and the new one scores 3.
 ```
 
 - Semicolons separate the three parts, and commas separate contributors.
@@ -63,7 +63,7 @@ Kinds are named `'if'`, `'else if'`, `'else'`, `'?:'`, `'switch'`, `'for'`, `'fo
 
 ## Fix
 
-Exactly one suggested change: a guard clause when one saves points, and otherwise moving one region of the function into a new function. Either one lowers the score, and the fix says to what. When neither qualifies, the [fallback](#fallback) gives a general direction instead. Every fix except the fallback is checked against its promise: `tests/hint-promises.test.ts` applies each one in the CLI fixtures and lints the result, and the [hint evaluation](../evaluation/hints.md) does the same on real code. A guard comes first because it removes complexity rather than moving it, and it is a small edit that skips no code. Once no guard helps, the next diagnostic suggests a move.
+Exactly one suggested change: a guard clause or moving one region of the function into a new function. Either one lowers the score, and the fix says to what. When neither qualifies, the [fallback](#fallback) gives a general direction instead. Every fix except the fallback is checked against its promise: `tests/hint-promises.test.ts` applies each one in the CLI fixtures and lints the result, and the [hint evaluation](../evaluation/hints.md) does the same on real code. A guard comes first when it is enough because it removes complexity rather than moving it, and it is a small edit that skips no code. When it isn't enough, the rule suggests whichever of the guard and the best move leaves the lower highest score, and the guard on a tie, so a guard that only gets part of the way is suggested only when no move does better. ADR-0005 records why.
 
 When another construct of the same kind shares its line, a construct is also given its column: `the body of the 'for' at line 105, column 11`.
 

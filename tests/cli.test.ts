@@ -10,14 +10,19 @@ const oxlint = join(root, "node_modules/.bin/oxlint");
 const { CI: _ci, FORCE_COLOR: _forceColor, ...plainEnv } = process.env;
 
 /**
- * Runs the Oxlint CLI from the repository root over a file in tests/fixtures/cli/, at max 0.
- * The format is always given: without one, Oxlint picks `agent` when it detects an agent.
- * Colors are off, so the output doesn't depend on the terminal or CI.
+ * Runs the Oxlint CLI from the repository root over a file in tests/fixtures/cli/, at max 0,
+ * with the config named `config` there. The format is always given: without one, Oxlint
+ * picks `agent` when it detects an agent. Colors are off, so the output doesn't depend on
+ * the terminal or CI.
  */
-function lint(file: string, format: string): { stdout: string; status: number | null } {
+function lint(
+	file: string,
+	format: string,
+	config = "oxlintrc.json",
+): { stdout: string; status: number | null } {
 	const result = spawnSync(
 		oxlint,
-		["-c", "tests/fixtures/cli/oxlintrc.json", "--format", format, `tests/fixtures/cli/${file}`],
+		["-c", `tests/fixtures/cli/${config}`, "--format", format, `tests/fixtures/cli/${file}`],
 		{
 			cwd: root,
 			encoding: "utf8",
@@ -34,12 +39,15 @@ function lint(file: string, format: string): { stdout: string; status: number | 
 }
 
 /** Agent-format diagnostics in line order; Oxlint's own order isn't stable. */
-function agentLines(file: string): string[] {
+function agentLines(
+	file: string,
+	{ config = "oxlintrc.json", rule = "cognitive-complexity" } = {},
+): string[] {
 	const line = (diagnostic: string) => Number(diagnostic.split(":")[1]);
 
-	return lint(file, "agent")
+	return lint(file, "agent", config)
 		.stdout.split("\n")
-		.filter((diagnostic) => diagnostic.includes("complexity(cognitive-complexity)"))
+		.filter((diagnostic) => diagnostic.includes(`complexity(${rule})`))
 		.sort((a, b) => line(a) - line(b));
 }
 
@@ -75,7 +83,7 @@ describe("diagnostics in --format agent", () => {
 		expect(agentLines("contributors.js")).toMatchInlineSnapshot(`
 			[
 			  "tests/fixtures/cli/contributors.js:4:17: error complexity(cognitive-complexity): Function 'flat' has cognitive complexity 4, over the max of 0; main contributors: 4 'if' at lines 5-11 (+4); fix: move lines 5-8 into a new function; this one drops to 2 and the new one scores 2.",
-			  "tests/fixtures/cli/contributors.js:16:17: error complexity(cognitive-complexity): Function 'deep' has cognitive complexity 10, over the max of 0; main contributors: 'if' at line 20 (+4, nested 3 deep), 'while' at line 19 (+3, nested 2 deep), 'for...of' at line 18 (+2, nested 1 deep); fix: invert the 'if' at line 17 into a guard clause that returns early, so its body moves up a level; this one drops to 7.",
+			  "tests/fixtures/cli/contributors.js:16:17: error complexity(cognitive-complexity): Function 'deep' has cognitive complexity 10, over the max of 0; main contributors: 'if' at line 20 (+4, nested 3 deep), 'while' at line 19 (+3, nested 2 deep), 'for...of' at line 18 (+2, nested 1 deep); fix: move lines 19-22 (the body of the 'for...of' at line 18) into a new function; this one drops to 3 and the new one scores 3.",
 			  "tests/fixtures/cli/contributors.js:28:17: error complexity(cognitive-complexity): Function 'mixed' has cognitive complexity 10, over the max of 0; main contributors: 2 '?:' at line 30 (+4, nested 1 deep), 'for' at line 31 (+2, nested 1 deep), 'if' at line 29 (+1); fix: move lines 30-33 (the body of the 'if' at line 29) into a new function; it reassigns 'a', which the code around it reads, so have it return the new 'a' and assign it from the call; this one drops to 4 and the new one scores 3.",
 			  "tests/fixtures/cli/contributors.js:41:17: error complexity(cognitive-complexity): Function 'chains' has cognitive complexity 4, over the max of 0; main contributors: 3 '&&' at lines 42-44 (+4); fix: move line 43 into a new function; it declares 'y', which the code after it uses, so declare 'y' before line 43, have it return 'y', and assign it from the call; this one drops to 2 and the new one scores 2.",
 			  "tests/fixtures/cli/contributors.js:48:23: error complexity(cognitive-complexity): Function 'jumps' has cognitive complexity 8, over the max of 0; main contributors: 'if' at line 51 (+3, nested 2 deep), 'for...in' at line 50 (+2, nested 1 deep), 2 labeled 'continue' at lines 52-54 (+2); fix: move lines 50-55 (the body of the 'for await...of' at line 49) into a new function; this one drops to 1 and the new one scores 3.",
@@ -102,25 +110,30 @@ describe("diagnostics in --format agent", () => {
 		`);
 	});
 
+	// At max 0 a guard clause is never enough on its own, so the shipped rule suggests one
+	// only when no region can move. The rule that always prefers a guard shows where one
+	// qualifies.
 	test("suggest a guard clause only where nothing would be skipped", () => {
-		expect(agentLines("guards.js")).toMatchInlineSnapshot(`
+		const guardFirst = { config: "oxlintrc-guard-first.json", rule: "guard-first" };
+
+		expect(agentLines("guards.js", guardFirst)).toMatchInlineSnapshot(`
 			[
-			  "tests/fixtures/cli/guards.js:2:17: error complexity(cognitive-complexity): Function 'returns' has cognitive complexity 6, over the max of 0; main contributors: 'if' at line 5 (+3, nested 2 deep), 'for...of' at line 4 (+2, nested 1 deep), 'if' at line 3 (+1); fix: invert the 'if' at line 3 into a guard clause that returns early, so its body moves up a level; this one drops to 4.",
-			  "tests/fixtures/cli/guards.js:13:17: error complexity(cognitive-complexity): Function 'continues' has cognitive complexity 10, over the max of 0; main contributors: 'if' at line 17 (+4, nested 3 deep), 'for...of' at line 16 (+3, nested 2 deep), 'if' at line 15 (+2, nested 1 deep); fix: invert the 'if' at line 15 into a guard clause that continues to the next iteration early, so its body moves up a level; this one drops to 8.",
-			  "tests/fixtures/cli/guards.js:25:17: error complexity(cognitive-complexity): Function 'outermost' has cognitive complexity 15, over the max of 0; main contributors: 'if' at line 30 (+5, nested 4 deep), 'for...of' at line 29 (+4, nested 3 deep), 'if' at line 28 (+3, nested 2 deep); fix: invert the 'if' at line 26 into a guard clause that returns early, so its body moves up a level; this one drops to 11.",
-			  "tests/fixtures/cli/guards.js:40:17: error complexity(cognitive-complexity): Function 'braceless' has cognitive complexity 15, over the max of 0; main contributors: 'if' at line 41 (+5, nested 4 deep), 'for...of' at line 41 (+4, nested 3 deep), 'if' at line 41 (+3, nested 2 deep); fix: invert the 'if' at line 41, column 2 into a guard clause that returns early, so its body moves up a level; this one drops to 11.",
-			  "tests/fixtures/cli/guards.js:45:17: error complexity(cognitive-complexity): Function 'trailing' has cognitive complexity 6, over the max of 0; main contributors: 'if' at line 48 (+3, nested 2 deep), 'if' at line 47 (+2, nested 1 deep), 'if' at line 46 (+1); fix: move lines 47-51 (the body of the 'if' at line 46) into a new function; this one drops to 1 and the new one scores 3.",
-			  "tests/fixtures/cli/guards.js:57:17: error complexity(cognitive-complexity): Function 'inElse' has cognitive complexity 7, over the max of 0; main contributors: 'if' at line 62 (+3, nested 2 deep), 'if' at line 61 (+2, nested 1 deep), 'if' at line 58 (+1); fix: move lines 61-65 (the 'else' branch at line 60) into a new function; this one drops to 2 and the new one scores 3.",
-			  "tests/fixtures/cli/guards.js:70:17: error complexity(cognitive-complexity): Function 'hasElse' has cognitive complexity 7, over the max of 0; main contributors: 'if' at line 73 (+3, nested 2 deep), 'if' at line 72 (+2, nested 1 deep), 'if' at line 71 (+1); fix: move lines 72-76 (the body of the 'if' at line 71) into a new function; this one drops to 2 and the new one scores 3.",
-			  "tests/fixtures/cli/guards.js:83:17: error complexity(cognitive-complexity): Function 'inCase' has cognitive complexity 6, over the max of 0; main contributors: 'if' at line 87 (+3, nested 2 deep), 'if' at line 86 (+2, nested 1 deep), 'switch' at line 84 (+1); fix: move lines 86-90 (the 'case' at line 85) into a new function; this one drops to 1 and the new one scores 3.",
-			  "tests/fixtures/cli/guards.js:95:17: error complexity(cognitive-complexity): Function 'inTry' has cognitive complexity 4, over the max of 0; main contributors: 'if' at line 98 (+2, nested 1 deep), 'if' at line 97 (+1), 'catch' at line 102 (+1); fix: move lines 98-100 (the body of the 'if' at line 97) into a new function; this one drops to 2 and the new one scores 1.",
-			  "tests/fixtures/cli/guards.js:108:17: error complexity(cognitive-complexity): Function 'savesNothing' has cognitive complexity 3, over the max of 0; main contributors: 'if' at line 110 (+2, nested 1 deep), 'for...of' at line 109 (+1); fix: move lines 110-112 (the body of the 'for...of' at line 109) into a new function; this one drops to 1 and the new one scores 1.",
-			  "tests/fixtures/cli/guards.js:117:17: error complexity(cognitive-complexity): Function 'flatInside' has cognitive complexity 7, over the max of 0; main contributors: 'if' at line 120 (+3, nested 2 deep), 'for...of' at line 119 (+2, nested 1 deep), 'if' at line 118 (+1); fix: invert the 'if' at line 118 into a guard clause that returns early, so its body moves up a level; this one drops to 5.",
-			  "tests/fixtures/cli/guards.js:126:17: error complexity(cognitive-complexity): Function 'doWhile' has cognitive complexity 6, over the max of 0; main contributors: 'for...of' at line 129 (+3, nested 2 deep), 'if' at line 128 (+2, nested 1 deep), 'do...while' at line 127 (+1); fix: invert the 'if' at line 128 into a guard clause that continues to the next iteration early, so its body moves up a level; this one drops to 5.",
-			  "tests/fixtures/cli/guards.js:135:17: error complexity(cognitive-complexity): Function 'loopTrailing' has cognitive complexity 6, over the max of 0; main contributors: 'for...of' at line 139 (+3, nested 2 deep), 'if' at line 138 (+2, nested 1 deep), 'do...while' at line 137 (+1); fix: move line 139 (the body of the 'if' at line 138) into a new function; this one drops to 3 and the new one scores 1.",
-			  "tests/fixtures/cli/guards.js:146:17: error complexity(cognitive-complexity): Function 'elseIfPath' has cognitive complexity 7, over the max of 0; main contributors: 'while' at line 151 (+3, nested 2 deep), 'if' at line 150 (+2, nested 1 deep), 'if' at line 147 (+1); fix: move lines 150-152 (the body of the 'else if' at line 149) into a new function; this one drops to 2 and the new one scores 3.",
-			  "tests/fixtures/cli/guards.js:157:17: error complexity(cognitive-complexity): Function 'labeled' has cognitive complexity 3, over the max of 0; main contributors: 'if' at line 160 (+2, nested 1 deep), 'if' at line 159 (+1); fix: move lines 160-162 (the body of the 'if' at line 159) into a new function; this one drops to 1 and the new one scores 1.",
-			  "tests/fixtures/cli/guards.js:168:17: error complexity(cognitive-complexity): Function 'inCatch' has cognitive complexity 6, over the max of 0; main contributors: 'if' at line 173 (+3, nested 2 deep), 'if' at line 172 (+2, nested 1 deep), 'catch' at line 171 (+1); fix: move lines 172-174 (the 'catch' block at line 171) into a new function; this one drops to 1 and the new one scores 3.",
+			  "tests/fixtures/cli/guards.js:2:17: error complexity(guard-first): Function 'returns' has cognitive complexity 6, over the max of 0; main contributors: 'if' at line 5 (+3, nested 2 deep), 'for...of' at line 4 (+2, nested 1 deep), 'if' at line 3 (+1); fix: invert the 'if' at line 3 into a guard clause that returns early, so its body moves up a level; this one drops to 4.",
+			  "tests/fixtures/cli/guards.js:13:17: error complexity(guard-first): Function 'continues' has cognitive complexity 10, over the max of 0; main contributors: 'if' at line 17 (+4, nested 3 deep), 'for...of' at line 16 (+3, nested 2 deep), 'if' at line 15 (+2, nested 1 deep); fix: invert the 'if' at line 15 into a guard clause that continues to the next iteration early, so its body moves up a level; this one drops to 8.",
+			  "tests/fixtures/cli/guards.js:25:17: error complexity(guard-first): Function 'outermost' has cognitive complexity 15, over the max of 0; main contributors: 'if' at line 30 (+5, nested 4 deep), 'for...of' at line 29 (+4, nested 3 deep), 'if' at line 28 (+3, nested 2 deep); fix: invert the 'if' at line 26 into a guard clause that returns early, so its body moves up a level; this one drops to 11.",
+			  "tests/fixtures/cli/guards.js:40:17: error complexity(guard-first): Function 'braceless' has cognitive complexity 15, over the max of 0; main contributors: 'if' at line 41 (+5, nested 4 deep), 'for...of' at line 41 (+4, nested 3 deep), 'if' at line 41 (+3, nested 2 deep); fix: invert the 'if' at line 41, column 2 into a guard clause that returns early, so its body moves up a level; this one drops to 11.",
+			  "tests/fixtures/cli/guards.js:45:17: error complexity(guard-first): Function 'trailing' has cognitive complexity 6, over the max of 0; main contributors: 'if' at line 48 (+3, nested 2 deep), 'if' at line 47 (+2, nested 1 deep), 'if' at line 46 (+1); fix: move lines 47-51 (the body of the 'if' at line 46) into a new function; this one drops to 1 and the new one scores 3.",
+			  "tests/fixtures/cli/guards.js:57:17: error complexity(guard-first): Function 'inElse' has cognitive complexity 7, over the max of 0; main contributors: 'if' at line 62 (+3, nested 2 deep), 'if' at line 61 (+2, nested 1 deep), 'if' at line 58 (+1); fix: move lines 61-65 (the 'else' branch at line 60) into a new function; this one drops to 2 and the new one scores 3.",
+			  "tests/fixtures/cli/guards.js:70:17: error complexity(guard-first): Function 'hasElse' has cognitive complexity 7, over the max of 0; main contributors: 'if' at line 73 (+3, nested 2 deep), 'if' at line 72 (+2, nested 1 deep), 'if' at line 71 (+1); fix: move lines 72-76 (the body of the 'if' at line 71) into a new function; this one drops to 2 and the new one scores 3.",
+			  "tests/fixtures/cli/guards.js:83:17: error complexity(guard-first): Function 'inCase' has cognitive complexity 6, over the max of 0; main contributors: 'if' at line 87 (+3, nested 2 deep), 'if' at line 86 (+2, nested 1 deep), 'switch' at line 84 (+1); fix: move lines 86-90 (the 'case' at line 85) into a new function; this one drops to 1 and the new one scores 3.",
+			  "tests/fixtures/cli/guards.js:95:17: error complexity(guard-first): Function 'inTry' has cognitive complexity 4, over the max of 0; main contributors: 'if' at line 98 (+2, nested 1 deep), 'if' at line 97 (+1), 'catch' at line 102 (+1); fix: move lines 98-100 (the body of the 'if' at line 97) into a new function; this one drops to 2 and the new one scores 1.",
+			  "tests/fixtures/cli/guards.js:108:17: error complexity(guard-first): Function 'savesNothing' has cognitive complexity 3, over the max of 0; main contributors: 'if' at line 110 (+2, nested 1 deep), 'for...of' at line 109 (+1); fix: move lines 110-112 (the body of the 'for...of' at line 109) into a new function; this one drops to 1 and the new one scores 1.",
+			  "tests/fixtures/cli/guards.js:117:17: error complexity(guard-first): Function 'flatInside' has cognitive complexity 7, over the max of 0; main contributors: 'if' at line 120 (+3, nested 2 deep), 'for...of' at line 119 (+2, nested 1 deep), 'if' at line 118 (+1); fix: invert the 'if' at line 118 into a guard clause that returns early, so its body moves up a level; this one drops to 5.",
+			  "tests/fixtures/cli/guards.js:126:17: error complexity(guard-first): Function 'doWhile' has cognitive complexity 6, over the max of 0; main contributors: 'for...of' at line 129 (+3, nested 2 deep), 'if' at line 128 (+2, nested 1 deep), 'do...while' at line 127 (+1); fix: invert the 'if' at line 128 into a guard clause that continues to the next iteration early, so its body moves up a level; this one drops to 5.",
+			  "tests/fixtures/cli/guards.js:135:17: error complexity(guard-first): Function 'loopTrailing' has cognitive complexity 6, over the max of 0; main contributors: 'for...of' at line 139 (+3, nested 2 deep), 'if' at line 138 (+2, nested 1 deep), 'do...while' at line 137 (+1); fix: move line 139 (the body of the 'if' at line 138) into a new function; this one drops to 3 and the new one scores 1.",
+			  "tests/fixtures/cli/guards.js:146:17: error complexity(guard-first): Function 'elseIfPath' has cognitive complexity 7, over the max of 0; main contributors: 'while' at line 151 (+3, nested 2 deep), 'if' at line 150 (+2, nested 1 deep), 'if' at line 147 (+1); fix: move lines 150-152 (the body of the 'else if' at line 149) into a new function; this one drops to 2 and the new one scores 3.",
+			  "tests/fixtures/cli/guards.js:157:17: error complexity(guard-first): Function 'labeled' has cognitive complexity 3, over the max of 0; main contributors: 'if' at line 160 (+2, nested 1 deep), 'if' at line 159 (+1); fix: move lines 160-162 (the body of the 'if' at line 159) into a new function; this one drops to 1 and the new one scores 1.",
+			  "tests/fixtures/cli/guards.js:168:17: error complexity(guard-first): Function 'inCatch' has cognitive complexity 6, over the max of 0; main contributors: 'if' at line 173 (+3, nested 2 deep), 'if' at line 172 (+2, nested 1 deep), 'catch' at line 171 (+1); fix: move lines 172-174 (the 'catch' block at line 171) into a new function; this one drops to 1 and the new one scores 3.",
 			]
 		`);
 	});
@@ -182,8 +195,8 @@ describe("diagnostics in --format agent", () => {
 			[
 			  "tests/fixtures/cli/embedded/component.vue:8:10: error complexity(cognitive-complexity): Function 'plain' has cognitive complexity 15, over the max of 0; main contributors: 3 'if' at lines 9-11 (+3), 'if' at line 13 (+3, nested 2 deep), 'if' at line 14 (+3, nested 2 deep); fix: move lines 13-14 (the body of the 'for...of' at line 12) into a new function; this one drops to 5 and the new one scores 6.",
 			  "tests/fixtures/cli/embedded/component.vue:21:10: error complexity(cognitive-complexity): Function 'setup' has cognitive complexity 15, over the max of 0; main contributors: 3 'if' at lines 22-24 (+3), 'if' at line 26 (+3, nested 2 deep), 'if' at line 27 (+3, nested 2 deep); fix: move lines 26-27 (the body of the 'for...of' at line 25) into a new function; this one drops to 5 and the new one scores 6.",
-			  "tests/fixtures/cli/embedded/inline.vue:2:18: error complexity(cognitive-complexity): Function 'sameLine' has cognitive complexity 11, over the max of 0; main contributors: 2 'if' at line 2 (+6, nested 2 deep), 2 'for...of' at line 2 (+4, nested 1 deep), 'if' at line 2 (+1); fix: invert the 'if' at line 2, column 33 into a guard clause that returns early, so its body moves up a level; this one drops to 7.",
-			  "tests/fixtures/cli/embedded/inline.vue:3:10: error complexity(cognitive-complexity): Function 'nextLine' has cognitive complexity 11, over the max of 0; main contributors: 2 'if' at line 3 (+6, nested 2 deep), 2 'for...of' at line 3 (+4, nested 1 deep), 'if' at line 3 (+1); fix: invert the 'if' at line 3, column 25 into a guard clause that returns early, so its body moves up a level; this one drops to 7.",
+			  "tests/fixtures/cli/embedded/inline.vue:2:18: error complexity(cognitive-complexity): Function 'sameLine' has cognitive complexity 11, over the max of 0; main contributors: 2 'if' at line 2 (+6, nested 2 deep), 2 'for...of' at line 2 (+4, nested 1 deep), 'if' at line 2 (+1); fix: move line 2 (the body of the 'if' at line 2, column 33) into a new function; this one drops to 1 and the new one scores 6.",
+			  "tests/fixtures/cli/embedded/inline.vue:3:10: error complexity(cognitive-complexity): Function 'nextLine' has cognitive complexity 11, over the max of 0; main contributors: 2 'if' at line 3 (+6, nested 2 deep), 2 'for...of' at line 3 (+4, nested 1 deep), 'if' at line 3 (+1); fix: move line 3 (the body of the 'if' at line 3, column 25) into a new function; this one drops to 1 and the new one scores 6.",
 			  "tests/fixtures/cli/embedded/widget.svelte:6:10: error complexity(cognitive-complexity): Function 'instance' has cognitive complexity 15, over the max of 0; main contributors: 3 'if' at lines 7-9 (+3), 'if' at line 11 (+3, nested 2 deep), 'if' at line 12 (+3, nested 2 deep); fix: move lines 11-12 (the body of the 'for...of' at line 10) into a new function; this one drops to 5 and the new one scores 6.",
 			  "tests/fixtures/cli/embedded/page.astro:2:10: error complexity(cognitive-complexity): Function 'frontmatter' has cognitive complexity 15, over the max of 0; main contributors: 3 'if' at lines 3-5 (+3), 'if' at line 7 (+3, nested 2 deep), 'if' at line 8 (+3, nested 2 deep); fix: move lines 7-8 (the body of the 'for...of' at line 6) into a new function; this one drops to 5 and the new one scores 6.",
 			  "tests/fixtures/cli/embedded/page.astro:17:10: error complexity(cognitive-complexity): Function 'client' has cognitive complexity 15, over the max of 0; main contributors: 3 'if' at lines 18-20 (+3), 'if' at line 22 (+3, nested 2 deep), 'if' at line 23 (+3, nested 2 deep); fix: move lines 22-23 (the body of the 'for...of' at line 21) into a new function; this one drops to 5 and the new one scores 6.",

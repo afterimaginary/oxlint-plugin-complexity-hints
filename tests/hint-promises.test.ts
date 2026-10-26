@@ -9,17 +9,20 @@ const root = join(import.meta.dirname, "..");
 const project = mkdtempSync(join(tmpdir(), "complexity-promises-"));
 
 // Each fixture, linted at max 0, covers one kind of fix or obstacle. Embedded scripts are
-// left out: the rewrites parse plain JavaScript and TypeScript.
-const fixtures = ["fixes.js", "guards.js", "obstacles.js", "labels.ts", "contributors.js"];
+// left out: the rewrites parse plain JavaScript and TypeScript. At max 0 a guard clause is
+// never enough on its own, so the shipped rule suggests one only when no region can move;
+// the guard fixture is linted with the rule that always prefers a guard.
+const fixtures = ["fixes.js", "obstacles.js", "labels.ts", "contributors.js"];
+const guards = "guards.js";
 
 afterAll(() => {
 	rmSync(project, { recursive: true, force: true });
 });
 
-function lint(paths: string[]): Report {
+function lint(paths: string[], config = "oxlintrc.json"): Report {
 	const result = spawnSync(
 		join(root, "node_modules/.bin/oxlint"),
-		["-c", "oxlintrc.json", "--format", "json", ...paths],
+		["-c", config, "--format", "json", ...paths],
 		{
 			cwd: project,
 			encoding: "utf8",
@@ -39,20 +42,36 @@ function lint(paths: string[]): Report {
 // says and linting again checks that statement for every kind of fix and obstacle.
 describe("every fix hint in the CLI fixtures", () => {
 	test("reaches the scores it promises", () => {
-		for (const fixture of fixtures) {
+		for (const fixture of [...fixtures, guards]) {
 			cpSync(join(root, "tests/fixtures/cli", fixture), join(project, fixture));
 		}
 
-		writeFileSync(
-			join(project, "oxlintrc.json"),
-			JSON.stringify({
-				jsPlugins: [{ name: "complexity", specifier: join(root, "src/index.ts") }],
-				categories: { correctness: "off" },
-				rules: { "complexity/cognitive-complexity": ["error", 0] },
-			}),
-		);
+		for (const { config, specifier, rule } of [
+			{ config: "oxlintrc.json", specifier: "src/index.ts", rule: "cognitive-complexity" },
+			{
+				config: "oxlintrc-guard-first.json",
+				specifier: "scripts/strategy-plugin.ts",
+				rule: "guard-first",
+			},
+		]) {
+			writeFileSync(
+				join(project, config),
+				JSON.stringify({
+					jsPlugins: [{ name: "complexity", specifier: join(root, specifier) }],
+					categories: { correctness: "off" },
+					rules: { [`complexity/${rule}`]: ["error", 0] },
+				}),
+			);
+		}
 
-		const applied = applyAll(project, lint(fixtures).diagnostics, lint);
+		const lintGuardFirst = (paths: string[]) => lint(paths, "oxlintrc-guard-first.json");
+
+		const applied = [
+			...applyAll(project, lint(fixtures).diagnostics, lint),
+			...applyAll(project, lintGuardFirst([guards]).diagnostics, lintGuardFirst, {
+				rule: "complexity(guard-first)",
+			}),
+		];
 
 		const misses = applied
 			.filter(({ outcome }) => outcome !== "as promised")

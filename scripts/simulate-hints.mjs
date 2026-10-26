@@ -425,9 +425,9 @@ function differences(functions) {
 }
 
 /**
- * The recommendation, with its numbers from the functions where the strategies part and
- * every strategy reaches the max. The wording assumes the comparison it was written from,
- * so it says when the numbers no longer support it.
+ * Why the rule uses guard if enough (ADR-0005), with its numbers from the functions where
+ * the strategies part and every strategy reaches the max. The wording assumes the
+ * comparison it was written from, so it says when the numbers no longer support it.
  */
 function recommendation(functions) {
 	const finished = functions.filter(({ splits }) => splits.some(Boolean)).filter(allDone);
@@ -459,15 +459,15 @@ function recommendation(functions) {
 		of(guardIfEnough, added) > of(guardFirst, added);
 
 	if (!holds) {
-		return "The numbers no longer match the recommendation this was written with; it needs revisiting.";
+		return "The numbers no longer support the strategy the rule uses (ADR-0005); it needs revisiting.";
 	}
 
 	return [
-		`Ship guard if enough (#43), and compare it with guard first with an agent in the loop (#42). Where the strategies part, it reaches the max in fewer lint rounds than guard first on ${fewer.length} of ${finished.length} functions, and never in more: ${of(guardIfEnough, rounds)} rounds against ${of(guardFirst, rounds)}. Guard first still moves ${of(guardFirst, movedLines)} lines into new functions after its guard clauses, against ${of(guardIfEnough, movedLines)}, so suggesting the move straight away mostly saves the rounds the guard clauses took.`,
+		`The rule uses guard if enough (ADR-0005). The [agent pilot](agent-pilot.md) gives no reason to keep suggesting a guard clause that isn't enough on its own: given one, agents extracted functions anyway. Where the strategies part, it reaches the max in fewer lint rounds than guard first on ${fewer.length} of ${finished.length} functions, and never in more: ${of(guardIfEnough, rounds)} rounds against ${of(guardFirst, rounds)}. Guard first still moves ${of(guardFirst, movedLines)} lines into new functions after its guard clauses, against ${of(guardIfEnough, movedLines)}, so suggesting the move straight away mostly saves the rounds the guard clauses took.`,
 		"",
-		`Against largest saving, it reaches the max in as few edits and lint rounds, and adds ${of(guardIfEnough, added)} functions to ${of(largestSaving, added)}, because it keeps the guard clause wherever the guard alone is enough. Whether that smaller change is also easier to review is for the agent benchmark to show.`,
+		`Against largest saving, it reaches the max in as few edits and lint rounds, and adds ${of(guardIfEnough, added)} functions to ${of(largestSaving, added)}, because it keeps the guard clause wherever the guard alone is enough. Whether that smaller change is also easier to review would take an agent benchmark on harder tasks than the pilot's (#53).`,
 		"",
-		`What it costs, against guard first over these ${finished.length}: ${of(guardIfEnough, added) - of(guardFirst, added)} more functions, and the moved code a reader follows into them. Its highest score left is higher than guard first's on ${highest(guardIfEnough, (delta) => delta > 0)} of them and lower on ${highest(guardIfEnough, (delta) => delta < 0)}, though at or under the max either way. The simulation can't weigh these against a round saved; the agent benchmark can, by how many tokens and steps the agent takes and how large the resulting diff is.`,
+		`What it costs, against guard first over these ${finished.length}: ${of(guardIfEnough, added) - of(guardFirst, added)} more functions, and the moved code a reader follows into them. Its highest score left is higher than guard first's on ${highest(guardIfEnough, (delta) => delta > 0)} of them and lower on ${highest(guardIfEnough, (delta) => delta < 0)}, though at or under the max either way. The simulation can't weigh these against a round saved; an agent in the loop could, by how many tokens and steps it takes and how large its diff is, but the pilot's agents fixed every function in one pass.`,
 	].join("\n");
 }
 
@@ -490,11 +490,11 @@ function summary(results) {
 		"",
 		"Each strategy decides between the guard clause the rule finds and the best region to move, when both help. The rule finds at most one guard clause, around the deepest increment, so the strategies compare that guard against every move, not every possible guard.",
 		"",
-		"- **Guard first**, what the rule does: the guard clause.",
+		"- **Guard first**: the guard clause.",
 		"- **Largest saving**: whichever leaves the lower highest score; a tie goes to the guard clause, which moves no code.",
-		"- **Guard if enough**: the guard clause when it brings the function to the max, or else as largest saving.",
+		"- **Guard if enough**, what the rule does: the guard clause when it brings the function to the max, or else as largest saving.",
 		"",
-		"A strategy that adds how far over the max the function still is would pick the same fix as largest saving, differing only in wording. A mechanical loop doesn't read the wording, so it is left to the agent benchmark (#42).",
+		"A strategy that adds how far over the max the function still is would pick the same fix as largest saving, differing only in wording. A mechanical loop doesn't read the wording, so only an agent could tell them apart; the [agent pilot](agent-pilot.md) didn't test it.",
 		"",
 		"## Outcomes",
 		"",
@@ -515,7 +515,7 @@ function summary(results) {
 		"",
 		...differences(functions),
 		"",
-		"## Recommendation",
+		"## The strategy the rule uses",
 		"",
 		recommendation(functions),
 		"",

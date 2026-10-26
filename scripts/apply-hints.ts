@@ -874,12 +874,14 @@ export interface Applied extends Checked {
  * Applies every hint in `diagnostics` that makes a promise, each to its own copy of its
  * file beside it, lints all the copies in one run, and checks each against its promise.
  * The copies keep their file's extension, so they parse the same way, and are removed
- * afterwards. `lint` runs Oxlint at max 0 from `dir` over the paths it's given.
+ * afterwards. `lint` runs Oxlint at max 0 from `dir` over the paths it's given, and `rule`
+ * is the rule's code in its report.
  */
 export function applyAll(
 	dir: string,
 	diagnostics: readonly Diagnostic[],
 	lint: (paths: string[]) => Report,
+	{ rule = RULE } = {},
 ): Applied[] {
 	const rewrites = diagnostics.flatMap((diagnostic) => {
 		const rewritten = rewrite(readFileSync(join(dir, diagnostic.filename), "utf8"), diagnostic);
@@ -913,7 +915,7 @@ export function applyAll(
 
 			const checked =
 				"text" in rewritten
-					? check(reportsFor(copies[index]!), diagnostic, rewritten)
+					? check(reportsFor(copies[index]!), diagnostic, rewritten, { rule })
 					: { outcome: rewritten.outcome };
 
 			return {

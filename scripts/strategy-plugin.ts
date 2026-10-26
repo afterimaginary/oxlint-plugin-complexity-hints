@@ -1,6 +1,6 @@
 // The rule once per hint strategy, for scripts/simulate-hints.mjs. Each rule picks fixes the
-// way its strategy says (see `Strategy` in src/hint.ts); the shipped plugin uses "guard
-// first", which comes first here, as the one the others are compared with.
+// way its strategy says (see `Strategy` in src/hint.ts). The shipped plugin uses "guard if
+// enough"; "guard first" comes first here, as the one the others are compared with.
 import type { Plugin } from "@oxlint/plugins";
 import type { Strategy } from "../src/hint.ts";
 import { createRule } from "../src/rules/cognitive-complexity.ts";
