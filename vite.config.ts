@@ -51,6 +51,10 @@ export default defineConfig({
 			},
 		},
 	},
+	test: {
+		// Only this checkout's suites, not those of worktrees under `.claude/worktrees/`.
+		include: ["tests/**/*.test.ts"],
+	},
 	fmt: {
 		useTabs: true,
 		ignorePatterns: ignored,
