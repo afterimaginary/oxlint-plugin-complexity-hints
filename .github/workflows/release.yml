@@ -1,0 +1,37 @@
+# Publishes to npm when a GitHub release is published. The release's tag (`v1.2.3`) is
+# the version: package.json stays at 0.0.0 in the repository, and this job sets it before
+# publishing. npm trusts this workflow through trusted publishing, so no npm token is
+# stored, and pnpm attaches provenance on its own.
+name: release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # Only a plain version tag on a commit merged to main publishes. Prereleases would
+      # otherwise go out as `latest`, and pnpm would read a tag like `vmajor` as a bump.
+      - name: Check the tag
+        run: |
+          [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::$GITHUB_REF_NAME isn't a vX.Y.Z tag"; exit 1; }
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::$GITHUB_REF_NAME isn't on main"; exit 1; }
+      - uses: voidzero-dev/setup-vp@68f39c78aaf39be468cabd2afb09c162574c84af # v1.21.2
+        with:
+          node-version: "24"
+      # Set before verify, so the checks run on the build that gets published.
+      - run: vp pm version "${GITHUB_REF_NAME#v}" -- --no-git-tag-version
+      - run: vp run verify
+      # The release checks out a tag, not a branch, so pnpm's branch checks don't apply.
+      - run: vp pm publish --no-git-checks
