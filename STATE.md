@@ -6,7 +6,7 @@
 
 `complexity/cognitive-complexity` scores every function as specified in `docs/specs/scoring.md`, matching `eslint-plugin-sonarjs` except for the documented whitepaper deviations, which differential and fuzz tests check. Over the max, it reports a single-line message, specified in `docs/specs/diagnostics.md`, that names the lines the function spans, the main contributors and one fix with the score it reaches: a guard clause when it alone brings the function to the max, or else whichever of the guard and a region to move into a new function leaves the lower score, with what stands in the way of moving it (ADR-0005). Every hint that states a score is checked against it: `tests/hint-promises.test.ts` applies each fix in the CLI fixtures, and `vp run evaluate-hints` applies all 318 on four pinned open-source repositories, where every one reaches exactly the scores it promised (`docs/evaluation/hints.md`). `vp run simulate-hints` plays the lint loop on the same code to compare how the rule chooses between a guard clause and a move (`docs/evaluation/strategies.md`): "guard if enough" reaches the max in fewer lint rounds than "guard first" (89 against 144 where they differ), at the cost of a few more extracted functions. An agent pilot (`docs/evaluation/agent-pilot.md`) gave Claude Sonnet 5.5 44 ESLint functions under this rule's message and under a bare score: every run succeeded either way, and with this rule's message the changes were about a tenth smaller. It also found that agents often edit through Bash. `complexity-hints` (ADR-0006, `docs/specs/scoped-checker.md`) runs Oxlint on a change and reports only the over-max functions the change touched, blocking when the fix points into the change too. The README's agent setup runs it from a Claude Code `PostToolUse` hook on Edit, Write and Bash (`complexity-hints --claude-code-hook`), gates commits and CI with it, and gives guidance for agent instructions; `install.md` walks an agent through all of it. The README leads with that purpose and the evidence for it; the rule docs and the `recommended` preset are in place.
 
-With this, the "Reviewable agent changes" milestone is done: every hint's promise checked, the hint strategy chosen by measurement, and diagnostics scoped to the change under review. Next is "Launch": the release process is in place (ADR-0007: a GitHub release's tag is the version, CI stages it through npm's trusted publishing, and a maintainer approves it with 2FA). The repository is public, `main` requires `verify`, and the package exists on npm; what's left is the first release, 0.1.0 (#19).
+The project has launched: the repository is public, `main` requires `verify`, and 0.1.0 is on npm with provenance. Releases follow ADR-0007: a GitHub release's tag is the version, CI stages it through npm's trusted publishing, and a maintainer approves it with 2FA. The README's `curl … | claude` setup was run end to end against the published package. Next is the "After launch" milestone.
 
 ## Features
 
@@ -17,20 +17,20 @@ With this, the "Reviewable agent changes" milestone is done: every hint's promis
 - [x] Hint strategy chosen by simulation and an agent pilot (#41, #42, #43)
 - [x] Scoped checker that reports only what a change is responsible for (#44)
 - [x] Agent setup: per-edit hook, commit gate and instructions (#45)
-- [ ] Published to npm as `oxlint-plugin-complexity-hints` (#19)
+- [x] Published to npm as `oxlint-plugin-complexity-hints` (#19)
 
 ## Recently Done
 
+- 0.1.0 released to npm, staged by CI through trusted publishing and approved with 2FA (#19)
+- Repository public, with private vulnerability reporting, secret scanning and `verify` required on `main` (#20)
 - The Claude Code hook is now one command, `complexity-hints --claude-code-hook`, and `install.md` walks an agent through setting everything up, linked from the top of the README
 - README, package and repository descriptions lead with reviewable agent changes and the evaluations' results (#46)
-- README agent setup: a `PostToolUse` hook on Edit, Write and Bash running `complexity-hints`, the commit and CI gate, and guidance for agent instructions (#45)
-- `complexity-hints`, a checker that reports only what a change is responsible for, recorded as ADR-0006 (#44)
-- The fix hint suggests a guard clause only when it alone reaches the max, recorded as ADR-0005 (#43)
 
 ## Up Next
 
-1. Release 0.1.0 (#19)
-2. Launch checklist: set the homepage once the npm page is live (#20).
+1. Agent benchmark on feature tasks (#53)
+2. Optional cleanup within a size budget (#47)
+3. Performance benchmark and budget (#17)
 
 ## Needs Your Decision
 
