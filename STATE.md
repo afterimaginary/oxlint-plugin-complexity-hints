@@ -34,7 +34,7 @@ With this, the "Reviewable agent changes" milestone is done: every hint's promis
 
 ## Needs Your Decision
 
-- Launch timing (#20), and whether `oxlint` becomes an optional peer dependency.
+- Launch timing (#20).
 
 ## Notes
 
