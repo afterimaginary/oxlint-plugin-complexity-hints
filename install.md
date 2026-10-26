@@ -6,7 +6,7 @@ I want you to set up oxlint-plugin-complexity-hints in this project for me. Exec
 
 OBJECTIVE: Install the plugin, turn on its rule, add the Claude Code hook that runs the checker after each edit, and add guidance to the project's agent instructions, changing nothing else.
 
-DONE WHEN: The project's linter runs with `complexity/cognitive-complexity` on, `npx --no complexity-hints` exits 0 or 1, and the hook's command, run once with a sample input, exits 0 or 2.
+DONE WHEN: The project's linter runs with `complexity/cognitive-complexity` on, `npx --no complexity-hints` exits 0 or 1, the hook is in the settings file I chose, and its command, given an input with no files, exits 0.
 
 ## TODO
 
@@ -65,7 +65,7 @@ Ask me where the hook should go:
 - **`.claude/settings.json`:** shared with everyone working on the project, and committed.
 - **`.claude/settings.local.json`:** just for me, and not committed.
 
-Merge this into that file, creating it if it doesn't exist, and keeping any hooks already there:
+Merge this into that file, creating it if it doesn't exist, and keeping any hooks already there. Claude Code asks me to approve changes to its settings files, even when edits are otherwise allowed. If I don't approve, or you can't write the file, show me the JSON and the file it goes in, so I can add it myself:
 
 ```json
 {
@@ -87,7 +87,7 @@ Merge this into that file, creating it if it doesn't exist, and keeping any hook
 
 After each `Edit`, `Write` or `Bash` call, the hook checks the project files the call changed. When the change is responsible for an over-max function, it shows the diagnostics to the agent.
 
-Then tell me about edits made through Bash. Claude Code reports which files a Bash command changed only from version 2.1.269 (`claude --version`), and in every permission mode only with this in my user settings, `~/.claude/settings.json`:
+Then tell me about edits made through Bash. The hook sees which files a Bash command changed only when Claude Code records them, from version 2.1.269 (`claude --version`). Without any setting, it records them only in auto and `bypassPermissions` modes. To record them in every mode, I can add this to my user settings, `~/.claude/settings.json`, or set `CLAUDE_CODE_BASH_EDIT_DIFF=1` for a session:
 
 ```json
 {
@@ -95,7 +95,7 @@ Then tell me about edits made through Bash. Claude Code reports which files a Ba
 }
 ```
 
-A project's settings can't turn it on. Don't edit my user settings unless I ask you to.
+A `true` in a project's settings files doesn't count. Don't edit my user settings unless I ask you to.
 
 ## Add the guidance
 
@@ -113,15 +113,15 @@ Ask me whether to also run the checker before commits or in CI. If I want it, fo
 
 1. **The rule loads.** Run the project's linter on its source: `vp lint` with Vite+, or else `npx oxlint`. It should run without a config error. Any function over the max shows up as `complexity(cognitive-complexity)`. Leave those functions alone.
 2. **The checker runs.** Run `npx --no complexity-hints`.
-   - Exit 0 or 1: it works. Exit 1 means the change since the default branch is responsible for an over-max function.
+   - Exit 0 or 1: it works. Exit 1 means the change since the default branch is responsible for an over-max function. With no change yet, exit 0 shows only that it runs, which is enough: step 1 already ran Oxlint with the rule.
    - Exit 2: it couldn't run, and its message says why. With no default branch, ask me which branch changes are compared against, and add `--base <ref>` to the end of the hook's command and to the gate's.
-3. **The hook runs.** The settings file is valid JSON and holds the hook. Run the hook's command once, from the project's directory, with a sample input naming one of the project's source files:
+3. **The hook's command is installed.** The settings file is valid JSON and holds the hook. From the project's directory, give the hook's command an input with no files:
 
    ```bash
-   echo '{"tool_input":{"file_path":"'"$PWD"'/src/index.ts"}}' | CLAUDE_PROJECT_DIR="$PWD" node_modules/.bin/complexity-hints --claude-code-hook
+   echo {} | node_modules/.bin/complexity-hints --claude-code-hook
    ```
 
-   Exit 0 or 2 means it works. Any other exit code means it can't run: its message says why.
+   Exit 0 means the command the hook runs is installed and starts. Any other exit code means it can't run: its message says why.
 
 ## Report
 
@@ -129,9 +129,9 @@ Tell me:
 
 - what you installed;
 - which files you changed;
-- where the hook went, and whether I need `bashEditDiffEnabled` and a newer Claude Code;
+- where the hook went, or the JSON for me to add if you couldn't write it, and whether I need `bashEditDiffEnabled` and a newer Claude Code;
 - how many functions are over the max today, without fixing them.
 
 The hook takes effect in Claude Code sessions started after the settings change.
 
-EXECUTE NOW: Complete the above TODO list to achieve: the project's linter runs with `complexity/cognitive-complexity` on, `npx --no complexity-hints` exits 0 or 1, and the hook's command, run with a sample input, exits 0 or 2.
+EXECUTE NOW: Complete the above TODO list to achieve: the project's linter runs with `complexity/cognitive-complexity` on, `npx --no complexity-hints` exits 0 or 1, the hook is in the settings file I chose, and its command, given an input with no files, exits 0.
